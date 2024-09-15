@@ -35,7 +35,7 @@ PATTERNS = {
         ("What are the keywords in the following sentence:\n\n{target}", "{concepts}"),
         ("What are the most important words in the following sentence:\n\n{target}", "{concepts}"),
         ("Identify the most salient words in this sentence:\n\n{target}", "{concepts}"),
-        ("Generate a sentence, and then tell me the concepts included in that sentence.", "Sentence:\n{target}\n\nConcepts:\n{concepts}"),
+        ("Generate a sentence, and then tell me the concepts included in that sentence.", "Sentence:\n{target}\n\nConcepts:\n{concepts_newline}"),
     ],
 
     "xsum": [
