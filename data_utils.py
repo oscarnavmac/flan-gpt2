@@ -1,3 +1,5 @@
+
+
 def format_example(example, patterns_list, i):
   inputs_pattern, targets_pattern = patterns_list[i]
   format_strings = {'prompt': inputs_pattern, 'completion': targets_pattern}

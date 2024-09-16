@@ -3,7 +3,7 @@ from data_utils import format_example
 import random
 import templates
 
-commongen = load_dataset('allenai/common_gen', split='validation')
+commongen = load_dataset('allenai/common_gen', split='train')
 
 flan_pattern_name = "common_gen"
 patterns_list = templates.PATTERNS[flan_pattern_name]
