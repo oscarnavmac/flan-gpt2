@@ -8,7 +8,7 @@ import re
 def generate(model, tokenizer, device, input_list):
     outputs = []
     for input in tqdm(input_list, desc="Evaluating model"):
-        inputs = tokenizer(input, return_tensors='pt').to(device)
+        inputs = tokenizer(input, truncation=True, return_tensors='pt').to(device)
         input_length = len(tokenizer.decode(inputs["input_ids"][0]))
         output = tokenizer.decode(
             model.generate(
