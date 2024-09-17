@@ -8,7 +8,7 @@ import re
 def generate(model, tokenizer, device, input_list):
     outputs = []
     for input in tqdm(input_list, desc="Evaluating model"):
-        inputs = tokenizer(input, truncation=True, return_tensors='pt').to(device)
+        inputs = tokenizer(input, return_tensors='pt').to(device)
         input_length = len(tokenizer.decode(inputs["input_ids"][0]))
         output = tokenizer.decode(
             model.generate(
@@ -101,7 +101,7 @@ class Evaluation:
         dataset = load_dataset('EdinburghNLP/xsum', split='test')
         if max_examples is not None:
             dataset = dataset.filter(
-                lambda example, idx: idx < max_examples, with_indices=True)
+                lambda example, idx: idx < max_examples and len(example["document"]) < 3000, with_indices=True)
         references = dataset["summary"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["xsum"], index)["prompt"] for ex in dataset]
