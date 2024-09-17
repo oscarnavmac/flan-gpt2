@@ -35,6 +35,7 @@ training_args = TrainingArguments(
     num_train_epochs=3,
     weight_decay=0.01,
     #max_steps=10, #quitar
+    save_strategy='epoch',
     logging_steps=50,
     use_cpu=False,
     push_to_hub=True, #CHECK PLEASE
