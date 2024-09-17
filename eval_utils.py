@@ -56,8 +56,11 @@ class Evaluation:
         self.tokenizer = tokenizer
         self.device = device
 
-    def anli(self):
+    def anli(self, max_examples=None):
         dataset = load_dataset("facebook/anli", split="test_r1")
+        if max_examples is not None:
+            dataset = dataset.filter(
+                lambda example, idx: idx < max_examples, with_indices=True)
         int2str = dataset.features['label'].int2str
         str2int = dataset.features['label'].str2int
         dataset = dataset.map(lambda example: {"answer": int2str(example["label"])})
@@ -69,8 +72,11 @@ class Evaluation:
         result = accuracy(references, predictions)["accuracy"]
         return result
 
-    def bool_q(self):
+    def bool_q(self, max_examples=None):
         dataset = load_dataset('google/boolq', split='validation')
+        if max_examples is not None:
+            dataset = dataset.filter(
+                lambda example, idx: idx < max_examples, with_indices=True)
         references = [int(ans) for ans in dataset["answer"]]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["bool_q"], index)["prompt"] for ex in dataset]
@@ -79,8 +85,11 @@ class Evaluation:
         result = accuracy(references, predictions)["accuracy"]
         return result
 
-    def common_gen(self):
+    def common_gen(self, max_examples=None):
         dataset = load_dataset('allenai/common_gen', split='validation')
+        if max_examples is not None:
+            dataset = dataset.filter(
+                lambda example, idx: idx < max_examples, with_indices=True)
         references = dataset["target"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["common_gen"], index)["prompt"] for ex in dataset]
@@ -88,8 +97,11 @@ class Evaluation:
         result = rouge(references, predictions)["rouge1"]
         return result
 
-    def xsum(self):
+    def xsum(self, max_examples=None):
         dataset = load_dataset('EdinburghNLP/xsum', split='test')
+        if max_examples is not None:
+            dataset = dataset.filter(
+                lambda example, idx: idx < max_examples, with_indices=True)
         references = dataset["summary"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["xsum"], index)["prompt"] for ex in dataset]
