@@ -14,7 +14,7 @@ def generate(model, tokenizer, device, input_list):
             model.generate(
                 inputs["input_ids"],
                 pad_token_id=tokenizer.eos_token_id,
-                max_new_tokens=10,
+                max_new_tokens=40,
                 do_sample=True
             )[0],
             skip_special_tokens=True
@@ -64,9 +64,9 @@ class Evaluation:
         references = dataset["label"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["anli"], index)["prompt"] for ex in dataset]
-        predictions = generate(self.model, self.tokenizer, self.device, input_list[:10])
+        predictions = generate(self.model, self.tokenizer, self.device, input_list)
         predictions = [get_label(pred, str2int) for pred in predictions]
-        result = accuracy(references[:10], predictions)["accuracy"]
+        result = accuracy(references, predictions)["accuracy"]
         return result
 
     def bool_q(self):
@@ -74,9 +74,9 @@ class Evaluation:
         references = [int(ans) for ans in dataset["answer"]]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["bool_q"], index)["prompt"] for ex in dataset]
-        predictions = generate(self.model, self.tokenizer, self.device, input_list[:5])
+        predictions = generate(self.model, self.tokenizer, self.device, input_list)
         predictions = [get_label(pred, str2bool) for pred in predictions]
-        result = accuracy(references[:5], predictions)["accuracy"]
+        result = accuracy(references, predictions)["accuracy"]
         return result
 
     def common_gen(self):
@@ -84,8 +84,8 @@ class Evaluation:
         references = dataset["target"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["common_gen"], index)["prompt"] for ex in dataset]
-        predictions = generate(self.model, self.tokenizer, self.device, input_list[:2])
-        result = rouge(references[:2], predictions)["rouge1"]
+        predictions = generate(self.model, self.tokenizer, self.device, input_list)
+        result = rouge(references, predictions)["rouge1"]
         return result
 
     def xsum(self):
@@ -93,6 +93,6 @@ class Evaluation:
         references = dataset["summary"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["xsum"], index)["prompt"] for ex in dataset]
-        predictions = generate(self.model, self.tokenizer, self.device, input_list[:2])
-        result = rouge(references[:2], predictions)["rougeLsum"]
+        predictions = generate(self.model, self.tokenizer, self.device, input_list)
+        result = rouge(references, predictions)["rougeLsum"]
         return result
