@@ -51,7 +51,7 @@ class Evaluation:
                     do_sample=True
                 )[0],
                 skip_special_tokens=True
-            )[input_length:].strip()
+            )
 
             if return_full_text: 
                 outputs.append(output) 
