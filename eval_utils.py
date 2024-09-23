@@ -5,24 +5,6 @@ from templates import PATTERNS
 from tqdm import tqdm
 import re
 
-def generate(model, tokenizer, device, input_list):
-    outputs = []
-    for input in tqdm(input_list, desc="Evaluating model"):
-        inputs = tokenizer(input, return_tensors='pt').to(device)
-        input_length = len(tokenizer.decode(inputs["input_ids"][0]))
-        output = tokenizer.decode(
-            model.generate(
-                inputs["input_ids"],
-                pad_token_id=tokenizer.eos_token_id,
-                max_new_tokens=40,
-                do_sample=True
-            )[0],
-            skip_special_tokens=True
-        )[input_length:].strip()
-        outputs.append(output)
-
-    return outputs
-
 def get_label(generated, tagging):
     word = generated.partition(' ')[0] #.partition(' ')[0] for picking only the first word
     cleaned_word = re.sub(r'[^\w\s]', '', word) # Dont discard generations such as entailment:, True?, etc...
@@ -56,6 +38,28 @@ class Evaluation:
         self.tokenizer = tokenizer
         self.device = device
 
+    def generate(self, input_list, return_full_text=True):
+        outputs = []
+        for input in tqdm(input_list, desc="Generating response..."):
+            inputs = self.tokenizer(input, return_tensors='pt').to(self.device)
+            input_length = len(self.tokenizer.decode(inputs["input_ids"][0]))
+            output = self.tokenizer.decode(
+                self.model.generate(
+                    inputs["input_ids"],
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    max_new_tokens=40,
+                    do_sample=True
+                )[0],
+                skip_special_tokens=True
+            )[input_length:].strip()
+
+            if return_full_text: 
+                outputs.append(output) 
+            else: 
+                outputs.append(output[input_length:].strip())
+
+        return outputs
+
     def anli(self, max_examples=None):
         dataset = load_dataset("facebook/anli", split="test_r1")
         if max_examples is not None:
@@ -67,7 +71,7 @@ class Evaluation:
         references = dataset["label"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["anli"], index)["prompt"] for ex in dataset]
-        predictions = generate(self.model, self.tokenizer, self.device, input_list)
+        predictions = self.generate(input_list)
         predictions = [get_label(pred, str2int) for pred in predictions]
         result = accuracy(references, predictions)["accuracy"]
         return result
@@ -80,7 +84,7 @@ class Evaluation:
         references = [int(ans) for ans in dataset["answer"]]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["bool_q"], index)["prompt"] for ex in dataset]
-        predictions = generate(self.model, self.tokenizer, self.device, input_list)
+        predictions = self.generate(input_list)
         predictions = [get_label(pred, str2bool) for pred in predictions]
         result = accuracy(references, predictions)["accuracy"]
         return result
@@ -93,7 +97,7 @@ class Evaluation:
         references = dataset["target"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["common_gen"], index)["prompt"] for ex in dataset]
-        predictions = generate(self.model, self.tokenizer, self.device, input_list)
+        predictions = self.generate(input_list)
         result = rouge(references, predictions)["rouge1"]
         return result
 
@@ -105,6 +109,6 @@ class Evaluation:
         references = dataset["summary"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["xsum"], index)["prompt"] for ex in dataset]
-        predictions = generate(self.model, self.tokenizer, self.device, input_list)
+        predictions = self.generate(input_list)
         result = rouge(references, predictions)["rougeLsum"]
         return result
