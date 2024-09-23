@@ -40,7 +40,7 @@ class Evaluation:
 
     def generate(self, input_list, return_full_text=True):
         outputs = []
-        for input in tqdm(input_list, desc="Generating response..."):
+        for input in tqdm(input_list, desc="Generating response... "):
             inputs = self.tokenizer(input, return_tensors='pt').to(self.device)
             input_length = len(self.tokenizer.decode(inputs["input_ids"][0]))
             output = self.tokenizer.decode(
