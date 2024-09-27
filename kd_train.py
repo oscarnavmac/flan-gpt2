@@ -1,7 +1,7 @@
 from data_utils import create_instruct_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers import DataCollatorForLanguageModeling
-from distill_utils import DistillationTrainer, DistillationTrainingArgumentsS
+from distill_utils import DistillationTrainer, DistillationTrainingArguments
 import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
