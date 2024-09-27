@@ -7,7 +7,7 @@ import re
 
 def get_label(generated, tagging):
     word = generated.partition(' ')[0] #.partition(' ')[0] for picking only the first word
-    cleaned_word = re.sub(r'[^\w\s]', '', word) # Dont discard generations such as entailment:, True?, etc...
+    cleaned_word = re.sub(r'[^\w\s]', '', word.lstrip()) # Dont discard generations such as entailment:, True?, etc...
     try:
         label = tagging(cleaned_word)
     except:

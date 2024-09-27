@@ -25,8 +25,10 @@ def format_example(example, patterns_list, i):
 
 def preprocess_function(example, patterns_list):
     idx = random.randint(0, 9)
+    if 'options' in example:
+        example = format_options(example)
     raw_text = format_example(example, patterns_list, idx).values()
-    example["text"] = ' '.join(raw_text)
+    example["text"] = '\n'.join(raw_text)
     return example
 
 def create_instruct_dataset(tasks_list):
@@ -37,14 +39,22 @@ def create_instruct_dataset(tasks_list):
                 lambda example, idx: idx < MAX_NUM_EXAMPLES, with_indices=True)
             int2str = loaded.features['label'].int2str
             loaded = loaded.map(lambda example: {"answer": int2str(example["label"])})
+            options = [["entailment", "neutral", "contradiction"]] * len(loaded)
+            loaded = loaded.add_column("options", options)
         else:
             loaded = load_dataset(TASKS[name], split='train').filter(
                 lambda example, idx: idx < MAX_NUM_EXAMPLES, with_indices=True)
         patterns = templates.PATTERNS[name]
-        dataset = loaded.map(preprocess_function, 
+        if name=="bool_q":
+            options = [["True", "False"]] * len(loaded)
+            loaded = loaded.add_column("options", options)
+        dataset = loaded.map(preprocess_function,
+                            #load_from_cache_file=False,
                             batched=False,
                             fn_kwargs={"patterns_list": patterns},
                             remove_columns=loaded.column_names,)
+        if 'options_' in dataset[0]:
+            dataset = dataset.remove_columns(["options_"])
         datasets.append(dataset)
 
     return concatenate_datasets(datasets).shuffle()
