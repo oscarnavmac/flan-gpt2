@@ -10,6 +10,11 @@ TASKS = {
     "anli": "facebook/anli"
 }
 
+def format_options(example):
+    """Formats options for FLAN tasks."""
+    example['options_'] = 'OPTIONS:\n- ' + '\n- '.join(example['options'])
+    return example
+
 def format_example(example, patterns_list, i):
     inputs_pattern, targets_pattern = patterns_list[i]
     format_strings = {'prompt': inputs_pattern, 'completion': targets_pattern}

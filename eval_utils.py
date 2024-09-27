@@ -1,6 +1,6 @@
 import evaluate
 from datasets import load_dataset
-from data_utils import format_example
+from data_utils import format_example, format_options
 from templates import PATTERNS
 from tqdm import tqdm
 import re
@@ -68,6 +68,8 @@ class Evaluation:
         int2str = dataset.features['label'].int2str
         str2int = dataset.features['label'].str2int
         dataset = dataset.map(lambda example: {"answer": int2str(example["label"])})
+        options = [["entailment", "neutral", "contradiction"]] * len(dataset)
+        dataset = dataset.add_column("options", options).map(format_options)
         references = dataset["label"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["anli"], index)["prompt"] for ex in dataset]
@@ -81,6 +83,8 @@ class Evaluation:
         if max_examples is not None:
             dataset = dataset.filter(
                 lambda example, idx: idx < max_examples, with_indices=True)
+        options = [["True", "False"]] * len(dataset)
+        dataset = dataset.add_column("options", options).map(format_options)
         references = [int(ans) for ans in dataset["answer"]]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["bool_q"], index)["prompt"] for ex in dataset]
