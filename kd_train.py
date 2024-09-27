@@ -5,8 +5,8 @@ from distill_utils import DistillationTrainer, DistillationTrainingArguments
 import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-checkpoint = 'openai-community/gpt2-medium'
-teacher_name = '"google/flan-t5-large"'
+checkpoint = "openai-community/gpt2-medium"
+teacher_name = "google/flan-t5-large"
 repo_name = "gpt2-multitask-distill"
 
 # Load Teacher model
