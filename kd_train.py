@@ -1,5 +1,5 @@
 from data_utils import create_instruct_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 from transformers import DataCollatorForLanguageModeling
 from distill_utils import DistillationTrainer, DistillationTrainingArguments
 import torch
@@ -10,7 +10,7 @@ teacher_name = "google/flan-t5-large"
 repo_name = "gpt2-multitask-distill"
 
 # Load Teacher model
-teacher = AutoModelForCausalLM.from_pretrained(teacher_name, torch_dtype=torch.bfloat16).to(device)
+teacher = AutoModelForSeq2SeqLM.from_pretrained(teacher_name, torch_dtype=torch.bfloat16).to(device)
 
 # Load model and tokenizer
 model = AutoModelForCausalLM.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
@@ -30,7 +30,7 @@ tokenized_dataset = dataset.map(
 data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
 
 # Define training arguments
-training_args = DistillationTrainingArgumentsS(
+training_args = DistillationTrainingArguments(
     output_dir=repo_name,
     learning_rate=5e-4,
     per_device_train_batch_size=1,
@@ -40,8 +40,8 @@ training_args = DistillationTrainingArgumentsS(
     max_steps=10, #quitar
     save_steps=1e6,
     #save_strategy='epoch',
-    logging_steps=100,
-    use_cpu=True, #CHECK PLEASE
+    #logging_steps=100,
+    use_cpu=False, #CHECK PLEASE
     push_to_hub=True,
     hub_model_id=repo_name, 
     alpha=0.5,
