@@ -27,8 +27,9 @@ def preprocess_function(example, patterns_list):
     idx = random.randint(0, 9)
     if 'options' in example:
         example = format_options(example)
-    raw_text = format_example(example, patterns_list, idx).values()
-    example["text"] = '\n'.join(raw_text)
+    example = format_example(example, patterns_list, idx)
+    #raw_text = format_example(example, patterns_list, idx).values()
+    #example["text"] = '\n'.join(raw_text)
     return example
 
 def create_instruct_dataset(tasks_list):
@@ -49,7 +50,7 @@ def create_instruct_dataset(tasks_list):
             options = [["True", "False"]] * len(loaded)
             loaded = loaded.add_column("options", options)
         dataset = loaded.map(preprocess_function,
-                            #load_from_cache_file=False,
+                            load_from_cache_file=False,
                             batched=False,
                             fn_kwargs={"patterns_list": patterns},
                             remove_columns=loaded.column_names,)
