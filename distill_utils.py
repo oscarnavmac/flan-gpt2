@@ -29,10 +29,11 @@ class DistillationTrainer(Trainer):
         assert outputs_student.logits.size() == outputs_teacher.logits.size()
 
         # Soften probabilities and compute distillation loss
-        loss_function = nn.KLDivLoss(reduction="batchmean")
-        loss_logits = (loss_function(
+        KL_Div = nn.KLDivLoss(reduction="batchmean")
+        # Reversed Kullback-Leibler
+        distill_loss = (KL_Div(
             F.log_softmax(outputs_teacher.logits / self.args.temperature, dim=-1),
             F.softmax(outputs_student.logits / self.args.temperature, dim=-1)) * (self.args.temperature ** 2))
 
-        loss = self.args.alpha * student_loss + (1. - self.args.alpha) * loss_logits
+        loss = self.args.alpha * student_loss + (1. - self.args.alpha) * distill_loss
         return (loss, outputs_student) if return_outputs else loss
