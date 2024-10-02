@@ -3,14 +3,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class DistillationTrainingArguments(TrainingArguments):
+class DistillationArguments(TrainingArguments):
     def __init__(self, *args, alpha=0.5, temperature=2.0, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.alpha = alpha
         self.temperature = temperature
 
-class DistillationTrainer(Trainer):
+class KLDivTrainer(Trainer):
+    """
+    Vanilla Knowledge Distillation using the Kullback-Leibler Divergence as loss
+    """
     def __init__(self, *args, teacher_model=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.teacher = teacher_model
