@@ -1,10 +1,20 @@
 # Fine-Tuning GPT-2 on Multi-Task Instructions
 
-| Model                          |  ANLI (acc) | BoolQ (acc) | CommonGen (rg-1)    | XSum (rg-LSum)      |
-|--------------------------------|-------------|-------------|---------------------|---------------------|
-| google/flan-t5-small           | 0.008       | 0.2         | 0.2746502846637787  | 0.17528646570665898 |
-| OscarNav/gpt2-multitask        | 0.33        | 0.588       | 0.25293517014722844 | 0.14147674372793262 |
-| google/flan-t5-base            | 0.216       | 0.534       | 0.3066009239948506  | 0.21693655607731693 |
-| google/flan-t5-large           | 0.086       | 0.378       | 0.3247458634135153  | 0.2523649038090164  |
-| google/flan-t5-xl              | 0.686       | 0.796       | 0.34512377792412763 | 0.2765402624355123  |
-| google/flan-t5-xxl (quantized) | 0.568       | 0.784       | 0.3522110619134549  | 0.2769729340316456  |
+Fine-tuning GPT-2 on the FLANv1 dataset.
+
+![knowledge-distillation](./images/tasks.png)
+_Tasks chosen from the FLANv1 dataset (muffin)._
+
+For now, we will only focus on fours tasks and later expand to the whole dataset.
+
+| Model                             |  ANLI (acc) | BoolQ (acc) | CommonGen (rg-1) | XSum (rg-LSum) |
+|-----------------------------------|-------------|-------------|------------------|----------------|
+| google/flan-t5-small              | 0.008       | 0.2         | 0.275            | 0.175          |
+| OscarNav/gpt2-multitask           | 0.33        | 0.588       | 0.253            | 0.141          |
+| google/flan-t5-base               | 0.216       | 0.534       | 0.307            | 0.217          |
+| google/flan-t5-large              | 0.086       | 0.378       | 0.324            | 0.252          |
+| google/flan-t5-xl                 | 0.686       | 0.796       | 0.345            | 0.277          |
+| google/flan-t5-xxl (quantized)    | 0.568       | 0.784       | 0.352            | 0.277          |
+| google/flan-t5-small-distilled-xl | 0.32        | 0.564       | 0.120            | 0.150          |
+
+For the T5-FLAN models, we should have expected to see a higher score for classification tasks. However we evaluated all models with the original dataset labels instead of the ones they were trained. For example, T5-FLAN trained on BoolQ using "yes" and "no" as targets instead of the original True and False. See the [evaluation notebook](https://drive.google.com/file/d/1tfUkfX2p_CL7X7VqdHcrZxhlZErpMX3L/view?usp=sharing) for more examples.
