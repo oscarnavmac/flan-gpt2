@@ -5,7 +5,7 @@ import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = "google/flan-t5-small"
-teacher_name = "google/flan-t5-base"
+teacher_name = "google/flan-t5-xl"
 repo_name = "flan-t5-distill-test"
 
 student = T5Model(checkpoint, device)
@@ -30,10 +30,10 @@ training_args = DistillationArguments(
     gradient_accumulation_steps = 4,
     num_train_epochs=1,
     weight_decay=0.01,
-    max_steps=100, #quitar
+    #max_steps=100, #quitar
     save_steps=1e6,
     #save_strategy='epoch',
-    logging_steps=20,
+    logging_steps=100,
     use_cpu=False, #CHECK PLEASE
     #push_to_hub=True,
     #hub_model_id=repo_name, 
