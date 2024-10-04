@@ -17,4 +17,6 @@ For now, we will only focus on fours tasks and later expand to the whole dataset
 | google/flan-t5-xxl (quantized)    | 0.568       | 0.784       | 0.352            | 0.277          |
 | google/flan-t5-small-distilled-xl | 0.32        | 0.564       | 0.120            | 0.150          |
 
-For the T5-FLAN models, we should have expected to see a higher score for classification tasks. However we evaluated all models with the original dataset labels instead of the ones they were trained. For example, T5-FLAN trained on BoolQ using "yes" and "no" as targets instead of the original True and False. See the [evaluation notebook](https://drive.google.com/file/d/1tfUkfX2p_CL7X7VqdHcrZxhlZErpMX3L/view?usp=sharing) for more examples.
+For the T5-FLAN models, we should have expected to see a higher score for classification tasks. However we evaluated all models with the original dataset labels instead of the ones they were trained. For example, T5-FLAN trained on BoolQ using "yes" and "no" as targets instead of the original True and False. See the [evaluation notebook](https://colab.research.google.com/drive/1tfUkfX2p_CL7X7VqdHcrZxhlZErpMX3L) for more examples.
+
+We cannot distill GPT-2 using FLAN-T5 as a teacher via KL-divergence (for example) because they have different tokenizer and vocabulary.
