@@ -12,9 +12,15 @@ class GPT2Model():
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
         return self.model
+    
+    def get_model(self):
+        return self.model
 
     def get_tokenizer(self):
         return self.tokenizer
+    
+    def get_collator(self):
+        return self.data_collator
 
     def tokenize_function(self, example):
         example["text"] = example["prompt"] + "\n" + example["completion"]
