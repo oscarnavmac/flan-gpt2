@@ -11,7 +11,7 @@ class GPT2Model():
         self.model = AutoModelForCausalLM.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
-        return self.model
+        self.tokenizer.pad_token = self.tokenizer.eos_token #ONLY FOR GPT-2
     
     def get_model(self):
         return self.model
