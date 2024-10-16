@@ -40,3 +40,17 @@ class KLDivTrainer(Trainer):
 
         loss = self.args.alpha * student_loss + (1. - self.args.alpha) * distill_loss
         return (loss, outputs_student) if return_outputs else loss
+    
+
+class ULDTrainer(Trainer):
+    """
+    Universal Logit Distillation via the Wasserstein distance
+    """
+    def __init__(self, *args, teacher_model=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.teacher = teacher_model
+        self._move_model_to_device(self.teacher,self.model.device)
+        self.teacher.eval()
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        pass
