@@ -24,8 +24,8 @@ class GPT2Model():
 
     def tokenize_function(self, example):
         text = example["prompt"] + "\n" + example["completion"]
-        input_encodings = self.tokenizer(text, truncation=False)
-        target_encodings = self.tokenizer(example["completion"], truncation=False)
+        input_encodings = self.tokenizer(text, truncation=True)
+        target_encodings = self.tokenizer(example["completion"], truncation=True)
 
         return {"input_ids": input_encodings["input_ids"],
                 "attention_mask": input_encodings["attention_mask"]}
