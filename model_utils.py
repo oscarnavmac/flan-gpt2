@@ -23,9 +23,14 @@ class GPT2Model():
         return self.data_collator
 
     def tokenize_function(self, example):
-        example["text"] = example["prompt"] + "\n" + example["completion"]
-        example = self.tokenizer(example["text"], truncation=True)
-        return example
+        text = example["prompt"] + "\n" + example["completion"]
+        input_encodings = self.tokenizer(text, truncation=False)
+        target_encodings = self.tokenizer(example["completion"], truncation=False)
+
+        return {"input_ids": input_encodings["input_ids"],
+                "attention_mask": input_encodings["attention_mask"],
+                "targets": target_encodings["input_ids"]}
+        #return example
     
 class T5Model():
     """
