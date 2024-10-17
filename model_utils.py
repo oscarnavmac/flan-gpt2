@@ -28,8 +28,8 @@ class GPT2Model():
         target_encodings = self.tokenizer(example["completion"], truncation=False)
 
         return {"input_ids": input_encodings["input_ids"],
-                "attention_mask": input_encodings["attention_mask"],
-                "targets": target_encodings["input_ids"]}
+                "attention_mask": input_encodings["attention_mask"]}
+                #"targets": target_encodings["input_ids"]}
         #return example
     
 class T5Model():
