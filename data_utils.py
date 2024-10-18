@@ -50,7 +50,7 @@ def create_instruct_dataset(tasks_list):
             options = [["True", "False"]] * len(loaded)
             loaded = loaded.add_column("options", options)
         dataset = loaded.map(preprocess_function,
-                            load_from_cache_file=False,
+                            #load_from_cache_file=False,
                             batched=False,
                             fn_kwargs={"patterns_list": patterns},
                             remove_columns=loaded.column_names,)
