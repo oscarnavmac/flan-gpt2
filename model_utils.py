@@ -60,4 +60,4 @@ class T5Model():
         return {"input_ids": input_encodings["input_ids"],
                 "attention_mask": input_encodings["attention_mask"],
                 "labels": target_encodings["input_ids"],
-                "targets": input_encodings["input_ids"]} # for consistency
+                "targets": target_encodings["input_ids"]} # for consistency
