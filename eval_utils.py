@@ -60,7 +60,7 @@ class Evaluation:
 
         return outputs
 
-    def anli(self, max_examples=None):
+    def anli(self, max_examples=None, return_full_text=True):
         dataset = load_dataset("facebook/anli", split="test_r1")
         if max_examples is not None:
             dataset = dataset.filter(
@@ -73,12 +73,12 @@ class Evaluation:
         references = dataset["label"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["anli"], index)["prompt"] for ex in dataset]
-        predictions = self.generate(input_list)
+        predictions = self.generate(input_list, return_full_text)
         predictions = [get_label(pred, str2int) for pred in predictions]
         result = accuracy(references, predictions)["accuracy"]
         return result
 
-    def bool_q(self, max_examples=None):
+    def bool_q(self, max_examples=None, return_full_text=True):
         dataset = load_dataset('google/boolq', split='validation')
         if max_examples is not None:
             dataset = dataset.filter(
@@ -88,12 +88,12 @@ class Evaluation:
         references = [int(ans) for ans in dataset["answer"]]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["bool_q"], index)["prompt"] for ex in dataset]
-        predictions = self.generate(input_list)
+        predictions = self.generate(input_list, return_full_text)
         predictions = [get_label(pred, str2bool) for pred in predictions]
         result = accuracy(references, predictions)["accuracy"]
         return result
 
-    def common_gen(self, max_examples=None):
+    def common_gen(self, max_examples=None, return_full_text=True):
         dataset = load_dataset('allenai/common_gen', split='validation')
         if max_examples is not None:
             dataset = dataset.filter(
@@ -101,11 +101,11 @@ class Evaluation:
         references = dataset["target"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["common_gen"], index)["prompt"] for ex in dataset]
-        predictions = self.generate(input_list)
+        predictions = self.generate(input_list, return_full_text)
         result = rouge(references, predictions)["rouge1"]
         return result
 
-    def xsum(self, max_examples=None):
+    def xsum(self, max_examples=None, return_full_text=True):
         dataset = load_dataset('EdinburghNLP/xsum', split='test')
         if max_examples is not None:
             dataset = dataset.filter(
@@ -113,6 +113,6 @@ class Evaluation:
         references = dataset["summary"]
         index = 0 # We will be using the first template for any task
         input_list = [format_example(ex, PATTERNS["xsum"], index)["prompt"] for ex in dataset]
-        predictions = self.generate(input_list)
+        predictions = self.generate(input_list, return_full_text)
         result = rouge(references, predictions)["rougeLsum"]
         return result
