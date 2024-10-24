@@ -27,11 +27,14 @@ dataset = create_instruct_dataset(datasets_names)
 tokenized_teacher_dataset = dataset.map(
     teacher.tokenize_function,
     remove_columns=["prompt", "completion"],
+    #load_from_cache_file=True,
+    desc="Tokenizing teacher inputs",
     batched=False
 )
 tokenized_student_dataset = dataset.map(
     student.tokenize_function,
     remove_columns=["prompt", "completion"],
+    desc="Tokenizing student inputs",
     batched=False
 )
 
@@ -50,8 +53,8 @@ train_student_dataloader = DataLoader(
 train_dataloader = zip(train_student_dataloader, train_teacher_dataloader)
 
 # Define hyperparameters:
-alpha = 0.9
-temperature = 1.5
+alpha = 0.5
+temperature = 1.0
 optimizer = AdamW(student_model.parameters(), lr=5e-4)
 num_epochs = 1
 num_training_steps = num_epochs * len(train_student_dataloader)
@@ -61,8 +64,8 @@ lr_scheduler = get_scheduler(
     num_warmup_steps=0,
     num_training_steps=num_training_steps
 )
-push_to_hub = True
-save_model = True
+push_to_hub = False
+save_model = False
 logging_steps = 100
 save_steps = 1000
 
@@ -98,6 +101,11 @@ for epoch in range(num_epochs):
         student_logits = student_outputs.logits
         teacher_logits = teacher_outputs.logits
         
+        #THEY NOT REALLY LOGITS ANYMORE SO PLEASE CHANGE THE VARIABLES NAMES 
+        student_logits = F.softmax(student_logits, dim=-1)
+        teacher_logits = F.softmax(teacher_logits, dim=-1)
+        
+        
         #print("So Far So Good")
         #print(student_logits.size())
         #print(student_logits)
@@ -123,21 +131,33 @@ for epoch in range(num_epochs):
         elif diff_size < 0:
             student_logits = F.pad(student_logits, (0, abs(diff_size)), value=0)
             
-        #print("WE ARE ALMOST THERE")
-        #print(student_logits.size())
-        #print(student_logits)
-        #print(teacher_logits.size())
-        #print(teacher_logits)
+        print("WE ARE ALMOST THERE")
+        print(student_logits.size())
+        print(student_logits)
+        print(teacher_logits.size())
+        print(teacher_logits)
         
-        #print("CALCULATING LOSS")
+        print("CALCULATING LOSS")
         
         distillation_loss = torch.zeros(student_logits.size(0), device=student_model.device)
         for i in range(student_logits.size(0)):
             size = min(student_logits.size(1), teacher_logits.size(1))
+            #print(size)
+            #print(student_logits[i][:size])
+            #print(teacher_logits[i][:size])
+            #print(f"size: {abs(student_logits[i][:size] - teacher_logits[i][:size]).size()}")
+            #print(f"size: {abs(student_logits[i][:size] - teacher_logits[i][:size]).sum(-1).size()}")
+            #print(f"size: {abs(student_logits[i][:size] - teacher_logits[i][:size]).sum(-1).mean(-1).size()}")
             distillation_loss[i] = abs(student_logits[i][:size] - teacher_logits[i][:size]).sum(-1).mean(-1)
         distillation_loss = distillation_loss.mean()
         
         loss = alpha * student_loss + (1-alpha) * distillation_loss
+        
+        print(distillation_loss)
+        print(student_loss)
+        print(loss)
+        
+        break
         
         loss.backward()
 
