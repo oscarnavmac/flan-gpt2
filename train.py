@@ -58,8 +58,6 @@ model.train()
 global_step = 0
 for epoch in range(num_epochs):
     for batch in train_dataloader:
-        #print({k: (v.shape,v) for k, v in batch.items()})
-        #break
         batch = {k: v.to(device) for k, v in batch.items()}
         outputs = model(**batch)
         loss = outputs.loss
