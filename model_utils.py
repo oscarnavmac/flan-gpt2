@@ -9,7 +9,7 @@ class GPT2Model():
     """
     def __init__(self, checkpoint, device):
         self.model = AutoModelForCausalLM.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
-        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
         self.tokenizer.pad_token = self.tokenizer.eos_token #ONLY FOR GPT-2
     
@@ -23,10 +23,11 @@ class GPT2Model():
         return self.data_collator
 
     def tokenize_function(self, example):
-        text = example["prompt"] + "\n" + example["completion"]
+        #text = example["prompt"] + "\n" + example["completion"]
+        sep = ["\n"]*len(example["prompt"])
+        text = [p + s + c for p, s, c in zip(example["prompt"], sep, example["completion"])]
         input_encodings = self.tokenizer(text, truncation=True)
-        length = len(input_encodings.input_ids)
-        target_encodings = self.tokenizer(example["completion"], padding='max_length', max_length=length)
+        target_encodings = self.tokenizer(example["completion"], truncation=True)
 
         return {"input_ids": input_encodings["input_ids"],
                 "attention_mask": input_encodings["attention_mask"],
@@ -39,7 +40,7 @@ class T5Model():
     """
     def __init__(self, checkpoint, device):
         self.model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
-        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForSeq2Seq(self.tokenizer)
     
     def get_model(self):
@@ -53,11 +54,8 @@ class T5Model():
 
     def tokenize_function(self, example):
         input_encodings = self.tokenizer(example["prompt"], truncation=True)
-
-        with self.tokenizer.as_target_tokenizer():
-            target_encodings = self.tokenizer(example["completion"], truncation=True)
+        target_encodings = self.tokenizer(text_target=example["completion"], truncation=True)
 
         return {"input_ids": input_encodings["input_ids"],
                 "attention_mask": input_encodings["attention_mask"],
-                "labels": target_encodings["input_ids"],
-                "targets": target_encodings["input_ids"]} # for consistency
+                "labels": target_encodings["input_ids"]}
