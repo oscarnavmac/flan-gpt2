@@ -153,7 +153,7 @@ for epoch in range(num_epochs):
         #print(teacher_logits.size())
         #print(teacher_logits)
         
-        print("CALCULATING LOSS")
+        #print("CALCULATING LOSS")
         
         distillation_loss = torch.zeros(student_probs.size(0), device=student_model.device)
         for i in range(student_probs.size(0)):
