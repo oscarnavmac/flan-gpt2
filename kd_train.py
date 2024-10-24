@@ -169,9 +169,9 @@ for epoch in range(num_epochs):
         
         loss = alpha * student_loss + (1-alpha) * distillation_loss
         
-        print(distillation_loss)
-        print(student_loss)
-        print(float(loss))
+        #print(distillation_loss)
+        #print(student_loss)
+        #print(float(loss))
         
         #break
     
