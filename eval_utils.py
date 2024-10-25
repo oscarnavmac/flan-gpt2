@@ -38,7 +38,7 @@ class Evaluation:
         self.tokenizer = tokenizer
         self.device = device
 
-    def generate(self, input_list, return_full_text=True):
+    def generate(self, input_list, return_full_text=True, max_tokens=40):
         outputs = []
         for input in tqdm(input_list, desc="Generating response... "):
             inputs = self.tokenizer(input, return_tensors='pt').to(self.device)
@@ -47,7 +47,7 @@ class Evaluation:
                 self.model.generate(
                     inputs["input_ids"],
                     pad_token_id=self.tokenizer.eos_token_id,
-                    max_new_tokens=40,
+                    max_new_tokens=max_tokens,
                     do_sample=True
                 )[0],
                 skip_special_tokens=True
