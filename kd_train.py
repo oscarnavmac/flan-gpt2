@@ -63,8 +63,8 @@ train_dataloader = zip(train_student_dataloader, train_teacher_dataloader)
 # Define hyperparameters:
 alpha = 0.5
 temperature = 1.0
-optimizer = AdamW(student_model.parameters(), lr=5e-4)
-num_epochs = 2
+optimizer = AdamW(student_model.parameters(), lr=5e-5)
+num_epochs = 1
 num_training_steps = num_epochs * len(train_student_dataloader)
 lr_scheduler = get_scheduler(
     "linear",
@@ -72,10 +72,10 @@ lr_scheduler = get_scheduler(
     num_warmup_steps=0,
     num_training_steps=num_training_steps
 )
-push_to_hub = False
-save_model = False
-logging_steps = 100
-save_steps = 1000
+push_to_hub = True
+save_model = True
+logging_steps = 200
+save_steps = 10000
 
 progress_bar = tqdm(range(num_training_steps))
 logging.basicConfig(level=logging.INFO)
@@ -174,8 +174,6 @@ for epoch in range(num_epochs):
         #print(float(loss))
         
         #break
-    
-        losses.append(loss)
         
         loss.backward()
 
@@ -186,16 +184,13 @@ for epoch in range(num_epochs):
         global_step+=1
 
         if global_step % logging_steps == 0:
+            losses.append(float(loss))
             logging.info(f"Loss: {loss}, step: {global_step}")
 
         if save_model and global_step % save_steps == 0:
             logging.info("saving model...")
             student_model.save_pretrained(repo_name)
             student.get_tokenizer().save_pretrained(repo_name)
-            
-# Saving model losses
-with open('losses.pkl', 'wb') as f:
-    pickle.dump(losses, f)
 
 if save_model:
     student_model.save_pretrained(repo_name)
@@ -205,3 +200,7 @@ if save_model:
 if push_to_hub:
     student_model.push_to_hub(repo_name)
     student.get_tokenizer().push_to_hub(repo_name)
+    
+# Saving model losses
+with open('losses.pkl', 'wb') as f:
+    pickle.dump(losses, f)

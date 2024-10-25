@@ -2,7 +2,7 @@ from datasets import load_dataset, concatenate_datasets
 import random
 import templates
 
-MAX_NUM_EXAMPLES = 10000
+MAX_NUM_EXAMPLES = 1000#10000
 TASKS = {
     "common_gen": "allenai/common_gen",
     "xsum": "EdinburghNLP/xsum",
