@@ -13,8 +13,8 @@ import pickle
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = 'openai-community/gpt2'
-teacher_name = "google/flan-t5-base"
-repo_name = "flan-t5-distill-test"
+teacher_name = 'google/flan-t5-base'
+repo_name = "flan-gpt2-medium-distill"
 
 student = GPT2Model(checkpoint, device)
 teacher = T5Model(teacher_name, device)
@@ -61,9 +61,9 @@ train_student_dataloader = DataLoader(
 train_dataloader = zip(train_student_dataloader, train_teacher_dataloader)
 
 # Define hyperparameters:
-alpha = 0.5
+alpha = 1.0
 temperature = 1.0
-optimizer = AdamW(student_model.parameters(), lr=5e-5)
+optimizer = AdamW(student_model.parameters(), lr=5e-6)
 num_epochs = 1
 num_training_steps = num_epochs * len(train_student_dataloader)
 lr_scheduler = get_scheduler(
@@ -72,8 +72,8 @@ lr_scheduler = get_scheduler(
     num_warmup_steps=0,
     num_training_steps=num_training_steps
 )
-push_to_hub = True
-save_model = True
+push_to_hub = False
+save_model = False
 logging_steps = 200
 save_steps = 10000
 

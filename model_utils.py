@@ -8,7 +8,7 @@ class GPT2Model():
     Simple class to manage GPT-2 models more easily
     """
     def __init__(self, checkpoint, device):
-        self.model = AutoModelForCausalLM.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
+        self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
         self.tokenizer.pad_token = self.tokenizer.eos_token #ONLY FOR GPT-2
