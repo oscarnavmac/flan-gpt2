@@ -42,15 +42,29 @@ train_dataloader = DataLoader(
     tokenized_dataset, shuffle=False, batch_size=1, collate_fn=gpt2_model.get_collator()
 )
 
+
+no_decay = ["bias", "LayerNorm.weight"]
+optimizer_grouped_parameters = [
+    {
+        "params": [p for n, p in model.named_parameters() 
+                    if not any(nd in n for nd in no_decay)],
+        "weight_decay": 0.01,
+    },
+    {
+        "params": [p for n, p in model.named_parameters() 
+                    if any(nd in n for nd in no_decay)],
+        "weight_decay": 0.0,
+    },
+]
 # Define hyperparameters:
-optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, weight_decay=0.01)
+optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=5e-4)
 
 
 push_to_hub = False
 save_model = False
-logging_steps = 25
+logging_steps =25
 save_steps = 1000
-gradient_accumulation_steps = 4
+gradient_accumulation_steps = 1
 
 logging_steps *= gradient_accumulation_steps
 
@@ -71,7 +85,9 @@ logging.basicConfig(level=logging.INFO)
 # TRAIN!!!!!
 losses = []
 model.train()
+model.zero_grad()
 global_step = 0
+running_loss = 0
 for epoch in range(num_epochs):
     for batch in train_dataloader:
         batch = {k: v.to(device) for k, v in batch.items()}
@@ -79,11 +95,24 @@ for epoch in range(num_epochs):
         #with autocast("cuda", dtype=torch.bfloat16):
         outputs = model(**batch)
         loss = outputs.loss #/ gradient_accumulation_steps
-        #print(loss)
+        running_loss += loss.item()
         loss.backward()
         
         #if global_step >= MAX_STEPS*gradient_accumulation_steps:
             #break
+            
+        if global_step % logging_steps == 0:
+            loss = running_loss / logging_steps
+            losses.append(float(loss))
+            running_loss = 0
+            
+            total_norm = 0.0
+            for p in [p for p in model.parameters() if p.grad is not None and p.requires_grad]:
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** 0.5
+            
+            logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
         
         if (global_step) % gradient_accumulation_steps == 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -93,17 +122,6 @@ for epoch in range(num_epochs):
         
             progress_bar.update(1)
         global_step+=1
-
-        if global_step % logging_steps == 0:
-            losses.append(float(loss))
-            
-            total_norm = 0.0
-            for p in model.parameters():
-                param_norm = p.grad.detach().data.norm(2)
-                total_norm += param_norm.item() ** 2
-            total_norm = total_norm ** 0.5
-            
-            logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
 
         if save_model and global_step % save_steps == 0:
             logging.info("saving model...")

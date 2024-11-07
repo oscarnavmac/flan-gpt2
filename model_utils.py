@@ -33,6 +33,25 @@ class GPT2Model():
                 "attention_mask": input_encodings["attention_mask"],
                 "targets": target_encodings["input_ids"]} #because its necesary
         #return example
+        
+    def get_global_grad_norm(self, norm_type=2.0):
+        """
+        Get the gradient norm of all parameters, calculated as specified by norm_type.
+        """
+        parameters = [p for p in self.model.parameters() if p.grad is not None]
+        
+        if len(parameters) == 0:
+            return torch.tensor(0.0)
+        
+        device = parameters[0].grad.device
+        total_norm = torch.zeros([], device=device)
+        
+        for p in parameters:
+            param_norm = p.grad.detach().data.norm(norm_type)
+            total_norm += param_norm ** norm_type
+            
+        total_norm = total_norm ** (1.0 / norm_type)
+        return total_norm
     
 class T5Model():
     """
