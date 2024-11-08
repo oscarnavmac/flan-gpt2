@@ -1,20 +1,22 @@
 from tqdm.auto import tqdm
-from transformers import get_scheduler
+from transformers import get_linear_schedule_with_warmup
 from data_utils import create_instruct_dataset
 from model_utils import T5Model, GPT2Model
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
+from torch.nn.utils import clip_grad_norm_ 
 from torch.optim import AdamW
 import torch
 import logging
 import pickle
+from torch.amp import autocast
 
 #TODO: Implement Batch training
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-checkpoint = 'openai-community/gpt2'
-teacher_name = 'google/flan-t5-base'
-repo_name = "flan-gpt2-medium-distill"
+checkpoint = 'openai-community/gpt2-medium'
+teacher_name = 'google/flan-t5-large'
+repo_name = "flan-gpt2-medium-distill_V2"
 
 student = GPT2Model(checkpoint, device)
 teacher = T5Model(teacher_name, device)
@@ -22,6 +24,9 @@ teacher = T5Model(teacher_name, device)
 # Get models
 student_model = student.get_model()
 teacher_model = teacher.get_model()
+
+student_model.to(torch.bfloat16)
+student_model.gradient_checkpointing_enable()
 
 # Load instruct dataset (4 tasks)
 datasets_names = ["common_gen", "xsum", "bool_q", "anli"]
@@ -47,8 +52,8 @@ tokenized_student_dataset = dataset.map(
 #tokeni2 = teacher.get_tokenizer()
 #print(tokeni.decode(tokenized_student_dataset["input_ids"][0]))
 
-#tokenized_teacher_dataset.set_format("torch")
-#tokenized_student_dataset.set_format("torch")
+tokenized_teacher_dataset.set_format("torch")
+tokenized_student_dataset.set_format("torch")
 
 # Get Training DataLoader
 batch_size = 1 # For now we can only use stochastic training
@@ -61,21 +66,25 @@ train_student_dataloader = DataLoader(
 train_dataloader = zip(train_student_dataloader, train_teacher_dataloader)
 
 # Define hyperparameters:
-alpha = 1.0
+optimizer = AdamW(student_model.parameters(), lr=5e-4, weight_decay=0.01)
+
+push_to_hub = True
+save_model = True
+logging_steps = 100
+save_steps = 100000
+gradient_accumulation_steps = 4
+
+# Distillation hyperparameters
+alpha = 0.5
 temperature = 1.0
-optimizer = AdamW(student_model.parameters(), lr=5e-6)
+
 num_epochs = 1
-num_training_steps = num_epochs * len(train_student_dataloader)
-lr_scheduler = get_scheduler(
-    "linear",
+num_training_steps = num_epochs * len(train_student_dataloader) // gradient_accumulation_steps
+scheduler = get_linear_schedule_with_warmup(
     optimizer=optimizer,
     num_warmup_steps=0,
     num_training_steps=num_training_steps
 )
-push_to_hub = False
-save_model = False
-logging_steps = 200
-save_steps = 10000
 
 progress_bar = tqdm(range(num_training_steps))
 logging.basicConfig(level=logging.INFO)
@@ -84,7 +93,9 @@ logging.basicConfig(level=logging.INFO)
 losses = []
 teacher_model.eval()
 student_model.train()
+step = 0
 global_step = 0
+running_loss = 0
 for epoch in range(num_epochs):
     for student_batch, teacher_batch in train_dataloader:
         #print("STUDENT")
@@ -98,6 +109,7 @@ for epoch in range(num_epochs):
         student_targets = student_batch["targets"]
         student_batch.pop("targets")
         
+        #with autocast("cuda", dtype=torch.bfloat16):
         student_outputs = student_model(**student_batch)
         student_loss = student_outputs.loss
         
@@ -107,12 +119,12 @@ for epoch in range(num_epochs):
         student_logits = student_outputs.logits
         teacher_logits = teacher_outputs.logits
         
-        #THEY NOT REALLY LOGITS ANYMORE SO PLEASE CHANGE THE VARIABLES NAMES 
+        # Apply Softmax to get each probabily distribution
         student_probs = F.softmax(student_logits, dim=-1)
         teacher_probs = F.softmax(teacher_logits, dim=-1)
         
         
-        #print("So Far So Good")
+        #print("LOGITS")
         #print(student_logits.size())
         #print(student_logits)
         #print(teacher_logits.size())
@@ -147,7 +159,7 @@ for epoch in range(num_epochs):
         elif diff_size < 0:
             student_probs = F.pad(student_probs, (0, abs(diff_size)), value=0)
             
-        #print("WE ARE ALMOST THERE")
+        #print("NEW LOGITS AFTER PADDING")
         #print(student_logits.size())
         #print(student_logits)
         #print(teacher_logits.size())
@@ -173,21 +185,32 @@ for epoch in range(num_epochs):
         #print(student_loss)
         #print(float(loss))
         
-        #break
         
+        # Vanilla training from here
+        
+        running_loss += loss.item() / gradient_accumulation_steps
         loss.backward()
+        
+        if (step + 1) % gradient_accumulation_steps == 0:
+            if (global_step + 1) % logging_steps == 0:
+                loss = running_loss / logging_steps
+                losses.append(float(loss))
+                running_loss = 0
+                
+                total_norm = student.get_global_grad_norm()
+                
+                logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
 
-        optimizer.step()
-        lr_scheduler.step()
-        optimizer.zero_grad()
-        progress_bar.update(1)
-        global_step+=1
+            clip_grad_norm_(student_model.parameters(), max_norm=1.0)
+            optimizer.step()
+            scheduler.step()
+            optimizer.zero_grad()
+            
+            progress_bar.update(1)
+            global_step+=1
+        step+=1
 
-        if global_step % logging_steps == 0:
-            losses.append(float(loss))
-            logging.info(f"Loss: {loss}, step: {global_step}")
-
-        if save_model and global_step % save_steps == 0:
+        if save_model and (global_step + 1) % save_steps == 0:
             logging.info("saving model...")
             student_model.save_pretrained(repo_name)
             student.get_tokenizer().save_pretrained(repo_name)
@@ -202,5 +225,5 @@ if push_to_hub:
     student.get_tokenizer().push_to_hub(repo_name)
     
 # Saving model losses
-with open('losses.pkl', 'wb') as f:
+with open('losses_kd.pkl', 'wb') as f:
     pickle.dump(losses, f)
