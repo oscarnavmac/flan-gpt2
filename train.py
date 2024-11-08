@@ -12,7 +12,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 checkpoint = 'openai-community/gpt2-medium'
 
-repo_name = "gpt2-dummy-testing"
+repo_name = "gpt2-multitask-4_V2"
 
 gpt2_model = GPT2Model(checkpoint, device)
 
@@ -21,10 +21,8 @@ model = gpt2_model.get_model()
 model.gradient_checkpointing_enable()
 #model.to(torch.bfloat16)
 
-tokenizer = gpt2_model.get_tokenizer()
-
 # Load instruct dataset (4 tasks)
-datasets_names = ["common_gen"]#, "xsum", "bool_q", "anli"]
+datasets_names = ["common_gen", "xsum", "bool_q", "anli"]
 dataset = create_instruct_dataset(datasets_names)
 
 # Tokenize examples
@@ -57,16 +55,14 @@ optimizer_grouped_parameters = [
     },
 ]
 # Define hyperparameters:
-optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=5e-4)
+optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, weight_decay=0.01)
 
 
-push_to_hub = False
-save_model = False
-logging_steps =25
-save_steps = 1000
-gradient_accumulation_steps = 1
-
-logging_steps *= gradient_accumulation_steps
+push_to_hub = True
+save_model = True
+logging_steps =100
+save_steps = 100000
+gradient_accumulation_steps = 4
 
 MAX_STEPS = None
 
@@ -86,6 +82,7 @@ logging.basicConfig(level=logging.INFO)
 losses = []
 model.train()
 model.zero_grad()
+step = 0
 global_step = 0
 running_loss = 0
 for epoch in range(num_epochs):
@@ -94,36 +91,34 @@ for epoch in range(num_epochs):
         batch.pop("targets") # Ignore this, is for other purposes which is not important right now
         #with autocast("cuda", dtype=torch.bfloat16):
         outputs = model(**batch)
-        loss = outputs.loss #/ gradient_accumulation_steps
+        loss = outputs.loss / gradient_accumulation_steps
         running_loss += loss.item()
         loss.backward()
         
         #if global_step >= MAX_STEPS*gradient_accumulation_steps:
             #break
-            
-        if global_step % logging_steps == 0:
-            loss = running_loss / logging_steps
-            losses.append(float(loss))
-            running_loss = 0
-            
-            total_norm = 0.0
-            for p in [p for p in model.parameters() if p.grad is not None and p.requires_grad]:
-                param_norm = p.grad.detach().data.norm(2)
-                total_norm += param_norm.item() ** 2
-            total_norm = total_norm ** 0.5
-            
-            logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
         
-        if (global_step) % gradient_accumulation_steps == 0:
+        if (step + 1) % gradient_accumulation_steps == 0:
+            
+            if (global_step + 1) % logging_steps == 0:
+                loss = running_loss / logging_steps
+                losses.append(float(loss))
+                running_loss = 0
+                
+                total_norm = gpt2_model.get_global_grad_norm()
+                
+                logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
+            
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             scheduler.step()
             optimizer.zero_grad()
         
             progress_bar.update(1)
-        global_step+=1
+            global_step+=1
+        step+=1
 
-        if save_model and global_step % save_steps == 0:
+        if save_model and (global_step + 1) % save_steps == 0:
             logging.info("saving model...")
             model.save_pretrained(repo_name)
             gpt2_model.get_tokenizer().save_pretrained(repo_name)
