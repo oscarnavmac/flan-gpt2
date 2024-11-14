@@ -111,7 +111,7 @@ def _load_coqa(train=False):
 
 
 # ================================ human_eval ================================== (NOT ON FLAN: consider manual tamplates)
-_repo_human_eval = "openai/openai_humaneval"
+_repo_human_eval = "openai/openai_humaneval" # nickrosh/Evol-Instruct-Code-80k-v1
 
 def _process_human_eval(example):
     example["canonical_solution"] = "```python\n" + example["canonical_solution"] + "\n```"
