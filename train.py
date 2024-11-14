@@ -1,5 +1,5 @@
 from tqdm.auto import tqdm
-from transformers import get_linear_schedule_with_warmup, AdamW, get_polynomial_decay_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup, get_polynomial_decay_schedule_with_warmup
 from data_utils import create_instruct_dataset
 from model_utils import GPT2Model
 from torch.utils.data import DataLoader
@@ -22,7 +22,7 @@ model.gradient_checkpointing_enable()
 #model.to(torch.bfloat16)
 
 # Load instruct dataset (4 tasks)
-datasets_names = ["common_gen", "xsum", "bool_q", "anli"]
+datasets_names = ["common_gen", "anli", "bool_q", "xsum"]
 dataset = create_instruct_dataset(datasets_names)
 
 # Tokenize examples
@@ -129,7 +129,7 @@ if save_model:
 
 # Push the model to the repo
 if push_to_hub:
-    model.push_to_hub(repo_name)
+    model.push_to_hub(repo_name, commit_message=f"Uploaded/updated model with loss {losses[-1]}")
     gpt2_model.get_tokenizer().push_to_hub(repo_name)
     
 # Saving model losses
