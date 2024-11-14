@@ -29,7 +29,7 @@ student_model.to(torch.bfloat16)
 student_model.gradient_checkpointing_enable()
 
 # Load instruct dataset (4 tasks)
-datasets_names = ["common_gen", "xsum", "bool_q", "anli"]
+datasets_names = ["common_gen", "anli", "bool_q"]#, "xsum"]
 dataset = create_instruct_dataset(datasets_names)
 
 # Tokenize datasets
@@ -63,7 +63,6 @@ train_teacher_dataloader = DataLoader(
 train_student_dataloader = DataLoader(
     tokenized_student_dataset, shuffle=False, batch_size=batch_size, collate_fn=student.get_collator()
 )
-train_dataloader = zip(train_student_dataloader, train_teacher_dataloader)
 
 # Define hyperparameters:
 optimizer = AdamW(student_model.parameters(), lr=5e-4, weight_decay=0.01)
@@ -76,9 +75,9 @@ gradient_accumulation_steps = 4
 
 # Distillation hyperparameters
 alpha = 0.5
-temperature = 1.0
+temperature = 2.0
 
-num_epochs = 1
+num_epochs = 2
 num_training_steps = num_epochs * len(train_student_dataloader) // gradient_accumulation_steps
 scheduler = get_linear_schedule_with_warmup(
     optimizer=optimizer,
@@ -97,7 +96,7 @@ step = 0
 global_step = 0
 running_loss = 0
 for epoch in range(num_epochs):
-    for student_batch, teacher_batch in train_dataloader:
+    for student_batch, teacher_batch in zip(train_student_dataloader, train_teacher_dataloader):
         #print("STUDENT")
         #print({k: (v.shape,v) for k, v in student_batch.items()})
         #print("TEACHER")
@@ -120,22 +119,22 @@ for epoch in range(num_epochs):
         teacher_logits = teacher_outputs.logits
         
         # Apply Softmax to get each probabily distribution
-        student_probs = F.softmax(student_logits, dim=-1)
-        teacher_probs = F.softmax(teacher_logits, dim=-1)
-        
+        student_probs = F.softmax(student_logits / temperature, dim=-1)
+        teacher_probs = F.softmax(teacher_logits / temperature, dim=-1)
         
         #print("LOGITS")
         #print(student_logits.size())
         #print(student_logits)
         #print(teacher_logits.size())
         #print(teacher_logits)
-        #break
         
         #max_length = max(max(student_answer_size), max(teacher_answer_size))
         #print(max_length)
         
         # Warning: this is hardcoded!!!
-        target_idx = student_batch["input_ids"].size(1) - student_targets.size(1)
+        #target_idx = student_batch["input_ids"].size(1) - student_targets.size(1)
+        is_value = student_batch["labels"].eq(-100)
+        target_idx = int(is_value.sum())
         student_probs = student_probs[:, target_idx:, :]
         #print(target_idx)
         
@@ -221,7 +220,7 @@ if save_model:
 
 # Push the model to the repo
 if push_to_hub:
-    student_model.push_to_hub(repo_name)
+    student_model.push_to_hub(repo_name, commit_message=f"Uploaded/updated model with loss {losses[-1]}")
     student.get_tokenizer().push_to_hub(repo_name)
     
 # Saving model losses
