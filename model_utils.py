@@ -1,6 +1,7 @@
 from transformers import (AutoTokenizer, 
                           AutoModelForCausalLM, AutoModelForSeq2SeqLM, 
                           DataCollatorForLanguageModeling, DataCollatorForSeq2Seq)
+from trl import DataCollatorForCompletionOnlyLM
 import torch
 
 class GPT2Model():
@@ -11,7 +12,11 @@ class GPT2Model():
         self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
-        self.tokenizer.pad_token = self.tokenizer.eos_token #ONLY FOR GPT-2
+        #self.response_template = " ### Response: "
+        #self.data_collator = DataCollatorForCompletionOnlyLM([44386, 18261, 25], tokenizer=self.tokenizer)
+        #self.tokenizer.pad_token = self.tokenizer.eos_token #ONLY FOR GPT-2
+        self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
+        self.model.config.pad_token_id = self.tokenizer.pad_token_id
     
     def get_model(self):
         return self.model
@@ -23,10 +28,9 @@ class GPT2Model():
         return self.data_collator
 
     def tokenize_function(self, example):
-        #text = example["prompt"] + "\n" + example["completion"]
-        sep = ["\n"]*len(example["prompt"])
-        text = [p + s + c for p, s, c in zip(example["prompt"], sep, example["completion"])]
-        input_encodings = self.tokenizer(text, truncation=True)
+        #text = example["prompt"] + "\n" + example["completion"] -> OLD WAY
+        text = [p + c + self.tokenizer.eos_token for p, c in zip(example["prompt"], example["completion"])]
+        input_encodings = self.tokenizer(text, truncation=True) #Maybe dont use truncation
         target_encodings = self.tokenizer(example["completion"], truncation=True)
 
         return {"input_ids": input_encodings["input_ids"],
