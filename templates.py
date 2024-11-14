@@ -11,6 +11,53 @@ PATTERNS = {
         ("Determine if the sentence is true based on the text below:\n{hypothesis}\n\n{premise}\n{options_}", "{answer}"),
         ("Generate a context and a hypothesis.", "Context: {premise}\n\nHypothesis: {hypothesis}"),
     ],
+    
+    "squad": [
+        ("Please answer a question about the following article about {title}:\n\n{context}\n\n{question}", "{answer}"),
+        ("Read this and answer the question\n\n{context}\n\n{question}", "{answer}"),
+        ("{context}\n{question}", "{answer}"),
+        ("Answer a question about this article:\n{context}\n{question}", "{answer}"),
+        ("Here is a question about this article: {context}\nWhat is the answer to this question: {question}", "{answer}"),
+        ("Article: {context}\n\nQuestion: {question}", "{answer}"),
+        ("Article: {context}\n\nNow answer this question: {question}", "{answer}"),
+        ("{title}\n{context}\n\nQ: {question}", "{answer}"),
+        ("Ask a question about {title}.", "{question}"),
+        ("What is the title of this article:\n\n{context}", "{title}"),
+    ],
+    
+    # NOT IMPLEMENTED BECAUSE THE DATASET IS ALREADY FORMATTED
+    "human_eval": [
+        ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"),
+        ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"),
+        ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"),
+        ("{prompt}", "{canonical_solution}"),
+    ],
+    
+    "cosmos_qa": [
+        ("{context}\n\nQuestion: {question}\n{options_}", "{answer}"),
+        ("{context}\n\n{question}\n{options_}", "{answer}"),
+        ("{context}\n\nAnswer the following question: {question}\n{options_}", "{answer}"),
+        ("{context}\n\nBased on the preceding passage, answer the following question {question}\n{options_}", "{answer}"),
+        ("{context}\n\nGive answer the following question using evidence from the above passage: {question}\n{options_}", "{answer}"),
+        ("Context:{context}\nQuestion {question}\nAnswer:\n{options_}", "{answer}"),
+        ("Read the following article and answer the question.\n\n{context}\n\n{question}\n{options_}", "{answer}"),
+        ("Answer the question about text:\n\n{context}\n\n{question}\n{options_}", "{answer}"),
+        ("Write a question about the article\n\n{context}", "{question}"),
+        ("{context}\n\nGenerate a question about the above context.", "{question}"),
+    ],
+    
+    "coqa": [
+        ("{story}\n\nAnswer the following questions:\n{numbered_questions}", "{numbered_answers}"),
+        ("Read the text and answer the questions.\n\n{story}\n\n{numbered_questions}", "{numbered_answers}"),
+        ("Answer the questions at the end based on the text.\n\n{story}\n\n{numbered_questions}", "{numbered_answers}"),
+        ("\n\n{story}\n\nAnswer this series of questions:\n\n{numbered_questions}", "{numbered_answers}"),
+        ("\n\n{story}\n\nWhat are the answers to this following set of questions:\n\n{numbered_questions}", "{numbered_answers}"),
+        ("\n\n{story}\n\nNow, provide a numbered list of answers to these questions:\n\n{numbered_questions}", "{numbered_answers}"),
+        ("\n\n{story}\n\n{numbered_questions}", "{numbered_answers}"),
+        ("\n\n{story}\n\n{numbered_questions}\n\nProvide a numbered list of answers.", "{numbered_answers}"),
+        ("Make use of the article to answer the questions.\n\n{story}\n\n{numbered_questions}", "{numbered_answers}"),
+        ("{story}\n\nBased on the article and the following list of answers, write a list of questions.\n\n{numbered_answers}", "{numbered_questions}"),
+    ],
 
     "common_gen": [
         ("Concepts: {concepts}\n\nWrite a sentence that includes all these words.", "{target}"),
