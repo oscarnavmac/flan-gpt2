@@ -1,4 +1,4 @@
-from datasets import load_dataset, concatenate_datasets
+from datasets import concatenate_datasets
 from tasks import TaskConfigs
 import random
 import templates
@@ -37,10 +37,10 @@ def format_instructions(example, patterns_list):
     return example
 
 
-def create_instruct_dataset(tasks_list, train=True): #check
+def create_instruct_dataset(tasks_list, training_set=True): #check
     datasets = []
     for name in tasks_list:
-        loaded = TaskConfigs.load_task(name, train).filter(
+        loaded = TaskConfigs.load_task(name, training_set).filter(
             lambda example, idx: idx < MAX_NUM_EXAMPLES, with_indices=True)
         patterns = templates.PATTERNS[name]
         dataset = loaded.map(format_instructions,
