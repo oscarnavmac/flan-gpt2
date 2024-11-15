@@ -16,6 +16,7 @@ _repo_anli = 'facebook/anli'
 def _process_anli(example, converter):
     example["answer"] = converter(example["label"])
     example["options"] = ["entailment", "neutral", "contradiction"]
+    
     return example
 
 def _load_anli(train=False):
@@ -25,7 +26,8 @@ def _load_anli(train=False):
         dataset = load_dataset(_repo_anli, split='test_r1')
     int2str = dataset.features['label'].int2str
     dataset = dataset.map(_process_anli,
-                          fn_kwargs={"converter": int2str}
+                          fn_kwargs={"converter": int2str},
+                          keep_in_memory=True
                           )
     
     return dataset
@@ -133,16 +135,37 @@ def _load_human_eval(train=False):
 
 # ============================== xsum ==========================================
 _repo_xsum = "EdinburghNLP/xsum"
+_XSUM_MAX_LEN = 3000
 
-def _process_xsum():
-    pass
+def _process_xsum(example):
+    if len(example["document"]) <= _XSUM_MAX_LEN:
+    
+        return example
 
 def _load_xsum(train=False):
     if train:
         dataset = load_dataset(_repo_xsum, split='train')
     else:
         dataset = load_dataset(_repo_xsum, split='validation')
-    #dataset = dataset.map(_process_xsum, keep_in_memory=True)
+    dataset = dataset.filter(_process_xsum, keep_in_memory=True) # This is used as a filter rather than a map
+    
+    return dataset
+
+
+# ============================== bool_q ==========================================
+_repo_bool_q = 'google/boolq'
+
+def _process_bool_q(example):
+    example["options"] = ["True", "False"]
+    
+    return example
+
+def _load_bool_q(train=False):
+    if train:
+        dataset = load_dataset(_repo_bool_q, split='train')
+    else:
+        dataset = load_dataset(_repo_bool_q, split='validation')
+    dataset = dataset.map(_process_bool_q, keep_in_memory=True)
     
     return dataset
 
@@ -161,7 +184,8 @@ LOADERS = {
     'cosmos_qa': _load_cosmos_qa,
     'coqa': _load_coqa,
     'human_eval': _load_human_eval,
-    'xsum': _load_xsum
+    'xsum': _load_xsum,
+    'bool_q': _load_bool_q
 }
 
 ################################### Main Class #################################
