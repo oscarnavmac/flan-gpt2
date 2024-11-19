@@ -157,6 +157,7 @@ _repo_bool_q = 'google/boolq'
 
 def _process_bool_q(example):
     example["options"] = ["True", "False"]
+    example["label"] = int(example["answer"])
     
     return example
 
