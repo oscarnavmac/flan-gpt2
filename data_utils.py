@@ -29,7 +29,7 @@ def format_example(example, patterns_list, i):
 
 
 def format_instructions(example, patterns_list):
-    idx = random.randint(0, 9)
+    idx = random.randint(0, len(patterns_list)-1)
     if 'options' in example:
         example = format_options(example)
     example = format_example(example, patterns_list, idx)
@@ -47,7 +47,7 @@ def create_instruct_dataset(tasks_list, training_set=True): #check
                             #load_from_cache_file=False,
                             batched=False,
                             fn_kwargs={"patterns_list": patterns},
-                            remove_columns=loaded.column_names,)
+                            remove_columns=loaded.column_names)
         if 'options_' in dataset[0]:
             dataset = dataset.remove_columns(["options_"])
         datasets.append(dataset)
