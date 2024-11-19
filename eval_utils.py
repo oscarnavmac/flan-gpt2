@@ -1,36 +1,23 @@
-import evaluate
-from datasets import load_dataset
-from data_utils import format_example, format_options
-from templates import PATTERNS
+from metrics import METRIC
+from tasks import TaskConfigs
+from data_utils import format_instructions
+import templates
 from tqdm import tqdm
 import re
+import torch
+import warnings
 
-def get_label(generated, tagging):
+def convert(text, options):
+    if text in options:
+        return options.index(text)
+    else:
+        return -1
+
+def get_label(generated, options):
     word = generated.partition(' ')[0] #.partition(' ')[0] for picking only the first word
     cleaned_word = re.sub(r'[^\w\s]', '', word.lstrip()) # Dont discard generations such as entailment:, True?, etc...
-    try:
-        label = tagging(cleaned_word)
-    except:
-        label = -1
-    #print(cleaned_word)
+    label = convert(cleaned_word, options)
     return label
-
-def str2bool(str):
-    if str.lower() == "true":
-        return True
-    elif str.lower() == "false":
-        return False
-    else: raise Exception("Not a Boolean")
-
-def accuracy(references, predictions):
-    acc_metric = evaluate.load("accuracy")
-    return acc_metric.compute(references=references, predictions=predictions)
-
-def rouge(references, predictions):
-    rouge_metric = evaluate.load('rouge')
-    return rouge_metric.compute(predictions=predictions,
-                  references=references,
-                  use_aggregator=True)
 
 class Evaluation:
     def __init__(self, model, tokenizer, device):
@@ -38,82 +25,98 @@ class Evaluation:
         self.tokenizer = tokenizer
         self.device = device
 
-    def generate(self, input_list, return_full_text=True, max_tokens=40):
+    def generate(self, input_list, return_full_text=True, max_tokens=60):
         outputs = []
-        for input in tqdm(input_list, desc="Generating response... "):
+        for input in tqdm(input_list, desc="Generating responses... "):
             #input += " ### Response: "
             inputs = self.tokenizer(input, return_tensors='pt').to(self.device)
             input_length = len(self.tokenizer.decode(inputs["input_ids"][0]))
-            output = self.tokenizer.decode(
-                self.model.generate(
-                    inputs["input_ids"],
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    max_new_tokens=max_tokens,
-                    do_sample=True
-                )[0],
-                skip_special_tokens=True
-            )
-
+            with torch.no_grad():
+                output = self.tokenizer.decode(
+                    self.model.generate(
+                        inputs["input_ids"],
+                        eos_token_id=self.tokenizer.eos_token_id,
+                        pad_token_id=self.tokenizer.pad_token_id,
+                        max_new_tokens=max_tokens,
+                        do_sample=True
+                    )[0],
+                    skip_special_tokens=True
+                )
             if return_full_text: 
                 outputs.append(output) 
             else: 
                 outputs.append(output[input_length:].strip())
 
         return outputs
-
-    def anli(self, max_examples=None, return_full_text=True):
-        dataset = load_dataset("facebook/anli", split="test_r1")
-        if max_examples is not None:
-            dataset = dataset.filter(
-                lambda example, idx: idx < max_examples, with_indices=True)
-        int2str = dataset.features['label'].int2str
-        str2int = dataset.features['label'].str2int
-        dataset = dataset.map(lambda example: {"answer": int2str(example["label"])})
-        options = [["entailment", "neutral", "contradiction"]] * len(dataset)
-        dataset = dataset.add_column("options", options).map(format_options)
-        references = dataset["label"]
-        index = 0 # We will be using the first template for any task
-        input_list = [format_example(ex, PATTERNS["anli"], index)["prompt"] for ex in dataset]
+    
+    
+    def rank_classification(self, inputs_list, options_list):
+        """" Rank Classification """
+        outputs = []
+        for prompt, options in tqdm(zip(inputs_list, options_list), desc="Generating predictions... "):
+            choice_probs = []
+            for completion in options:
+                inputs = self.tokenizer(prompt + completion, return_tensors='pt').to(self.device)
+                with torch.no_grad():
+                    output = self.model(**inputs, labels=inputs["input_ids"])
+                    # Get the negative log-likelihood as a score for this choice
+                    choice_prob = -output.loss.item()
+                choice_probs.append(choice_prob)
+            # Select the choice with the highest probability
+            predicted_answer = torch.argmax(torch.tensor(choice_probs)).item()
+            outputs.append(predicted_answer)
+            
+        return outputs
+    
+    
+    def evaluate(self, dataset_name, num_samples=None, training_set=False, return_full_text=True):
+        
+        loaded = TaskConfigs.load_task(dataset_name, training_set).filter(
+            lambda example, idx: idx < num_samples, with_indices=True)
+        patterns = templates.PATTERNS[dataset_name][:1] # Only first template for any task
+        
+        dataset = loaded.map(format_instructions,
+                            #load_from_cache_file=False,
+                            batched=False,
+                            fn_kwargs={"patterns_list": patterns})
+        input_list = dataset["prompt"]
+        
+        if 'options' in dataset[0]: # rank classification
+            references = dataset["label"]
+            options = dataset["options"]
+            predictions = self.rank_classification(inputs_list=input_list, options_list=options)
+        else:
+            references = dataset["completion"]
+            predictions = self.generate(input_list, return_full_text)
+            
+        metric_fn = METRIC[dataset_name]
+        result = list(metric_fn(references, predictions).values()) # Get value of the only element in the dict
+        
+        return float(result[0])
+    
+    
+    def evaluate_dataset(self, dataset_name, num_samples=None, training_set=False, return_full_text=True):
+        warnings.warn("deprecated", DeprecationWarning)
+        
+        loaded = TaskConfigs.load_task(dataset_name, training_set).filter(
+            lambda example, idx: idx < num_samples, with_indices=True)
+        patterns = templates.PATTERNS[dataset_name][:1] # Only first template for any task
+        
+        dataset = loaded.map(format_instructions,
+                            #load_from_cache_file=False,
+                            batched=False,
+                            fn_kwargs={"patterns_list": patterns})
+        
+        references = dataset["completion"]
+        input_list = dataset["prompt"]
         predictions = self.generate(input_list, return_full_text)
-        predictions = [get_label(pred, str2int) for pred in predictions]
-        result = accuracy(references, predictions)["accuracy"]
-        return result
+        metric_fn = METRIC[dataset_name]
 
-    def bool_q(self, max_examples=None, return_full_text=True):
-        dataset = load_dataset('google/boolq', split='validation')
-        if max_examples is not None:
-            dataset = dataset.filter(
-                lambda example, idx: idx < max_examples, with_indices=True)
-        options = [["True", "False"]] * len(dataset)
-        dataset = dataset.add_column("options", options).map(format_options)
-        references = [int(ans) for ans in dataset["answer"]]
-        index = 0 # We will be using the first template for any task
-        input_list = [format_example(ex, PATTERNS["bool_q"], index)["prompt"] for ex in dataset]
-        predictions = self.generate(input_list, return_full_text)
-        predictions = [get_label(pred, str2bool) for pred in predictions]
-        result = accuracy(references, predictions)["accuracy"]
-        return result
+        if 'options' in dataset[0]:
+            options = dataset["options"]
+            references = [get_label(r, o) for r, o in zip(references, options)]
+            predictions = [get_label(p, o) for p, o in zip(predictions, options)]
 
-    def common_gen(self, max_examples=None, return_full_text=True):
-        dataset = load_dataset('allenai/common_gen', split='validation')
-        if max_examples is not None:
-            dataset = dataset.filter(
-                lambda example, idx: idx < max_examples, with_indices=True)
-        references = dataset["target"]
-        index = 0 # We will be using the first template for any task
-        input_list = [format_example(ex, PATTERNS["common_gen"], index)["prompt"] for ex in dataset]
-        predictions = self.generate(input_list, return_full_text)
-        result = rouge(references, predictions)["rouge1"]
-        return result
-
-    def xsum(self, max_examples=None, return_full_text=True):
-        dataset = load_dataset('EdinburghNLP/xsum', split='test')
-        if max_examples is not None:
-            dataset = dataset.filter(
-                lambda example, idx: idx < max_examples and len(example["document"]) < 3000, with_indices=True)
-        references = dataset["summary"]
-        index = 0 # We will be using the first template for any task
-        input_list = [format_example(ex, PATTERNS["xsum"], index)["prompt"] for ex in dataset]
-        predictions = self.generate(input_list, return_full_text)
-        result = rouge(references, predictions)["rougeLsum"]
-        return result
+        result = list(metric_fn(references, predictions).values()) # Get value of the only element in the dict
+        
+        return float(result[0])
