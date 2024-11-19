@@ -53,7 +53,9 @@ class Evaluation:
     def rank_classification(self, inputs_list, options_list):
         """" Rank Classification """
         outputs = []
-        for prompt, options in tqdm(zip(inputs_list, options_list), desc="Generating predictions... "):
+        for prompt, options in tqdm(zip(inputs_list, options_list),
+                                    desc="Generating predictions... ",
+                                    total=len(inputs_list)):
             choice_probs = []
             for completion in options:
                 inputs = self.tokenizer(prompt + completion, return_tensors='pt').to(self.device)
