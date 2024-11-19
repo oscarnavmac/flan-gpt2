@@ -75,7 +75,7 @@ gradient_accumulation_steps = 4
 
 # Distillation hyperparameters
 alpha = 0.5
-temperature = 1.0
+temperature = 2.5
 
 num_epochs = 1
 num_training_steps = num_epochs * len(train_student_dataloader) // gradient_accumulation_steps
