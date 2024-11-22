@@ -93,7 +93,7 @@ def _load_cosmos_qa(train=False):
     return dataset
 
 
-# ================================= CoQA =======================================
+# ================================= CoQA ======================================= (WARNING: Dataset contains less than 10k examples)
 _repo_coqa = "stanfordnlp/coqa"
 
 def _process_coqa(example):
@@ -112,42 +112,46 @@ def _load_coqa(train=False):
     return dataset
 
 
-# ================================ human_eval ================================== (NOT ON FLAN: consider manual tamplates)
-_repo_human_eval = "openai/openai_humaneval" # nickrosh/Evol-Instruct-Code-80k-v1
+# ================================ python_code ================================== (No templates required, already formatted in insructions)
+#_repo_human_eval = "openai/openai_humaneval" # "nickrosh/Evol-Instruct-Code-80k-v1" # "leo009/python-programming-instructions"
+_PYTHONCODE_MAX_LEN = 300
+_repo_python_code = "iamtarun/python_code_instructions_18k_alpaca"
 
-def _process_human_eval(example):
-    example["canonical_solution"] = "```python\n" + example["canonical_solution"] + "\n```"
+def _process_python_code(example):
+    if example["input"] not in ("Not applicable", ""):
+        example["instruction"] += " " + example["input"]
+    example["solution"] = "```python\n" + example["output"] + "\n```"
     
     return example
 
-def _load_human_eval(train=False):
+def _load_python_code(train=False):
     if train:
-        raise NotImplementedError
+        dataset = load_dataset(_repo_python_code, split='train')
     else:
-        dataset = load_dataset(_repo_human_eval, split='test')
-    dataset = dataset.map(_process_human_eval, keep_in_memory=True)
+        raise NotImplementedError
+    dataset.filter(lambda example: len(example["output"]) <= _PYTHONCODE_MAX_LEN, keep_in_memory=True)
+    dataset = dataset.map(_process_python_code, keep_in_memory=True)
     
     return dataset
 
 
 # =================================== copa =====================================
-#TODAVIA NO HAY
+#NOT FOUND
 
 # ============================== xsum ==========================================
 _repo_xsum = "EdinburghNLP/xsum"
 _XSUM_MAX_LEN = 3000
 
 def _process_xsum(example):
-    if len(example["document"]) <= _XSUM_MAX_LEN:
-    
-        return example
+    pass
 
 def _load_xsum(train=False):
     if train:
         dataset = load_dataset(_repo_xsum, split='train')
     else:
         dataset = load_dataset(_repo_xsum, split='validation')
-    dataset = dataset.filter(_process_xsum, keep_in_memory=True) # This is used as a filter rather than a map
+    #dataset = dataset.map(_process_xsum, keep_in_memory=True)
+    dataset.filter(lambda example: len(example["document"]) <= _XSUM_MAX_LEN, keep_in_memory=True)
     
     return dataset
 
@@ -171,22 +175,93 @@ def _load_bool_q(train=False):
     return dataset
 
 
-# =============================== glue_mrpc ====================================
-_repo_glue_mrpc = "SetFit/mrpc"
+# =============================== paws ==========================================
+#_repo_glue_mrpc = "SetFit/mrpc"
+_repo_paws = "google-research-datasets/paws"
 
-# ================================ eng-spa ===================================== (NOT ON FLAN: consider manual tamplates)
+def _process_paws(example):
+    options = ["No", "Yes"]
+    example["options"] = options
+    example["answer"] = options[example["label"]]
+    
+    return example
+
+def _load_paws(train=False):
+    if train:
+        dataset = load_dataset(_repo_paws, "labeled_final", split="train")
+    else:
+        dataset = load_dataset(_repo_paws, "labeled_final", split="test")
+    dataset = dataset.map(_process_paws, keep_in_memory=True)
+    
+    return dataset
+
+# ================================ eng_spa ===================================== (NOT ON FLAN: consider manual tamplates)
 _repo_eng_spa = "OscarNav/spa-eng"
 
-#-------------------------------------------------------------------------------
+def _process_eng_spa():
+    pass
+
+def _load_eng_spa(train=False):
+    if train:
+        dataset = load_dataset(_repo_eng_spa, split="train")
+    else:
+        dataset = load_dataset(_repo_eng_spa, split="test")
+    #dataset = dataset.map(_process_eng_spa, keep_in_memory=True)
+    
+    return dataset
+
+# ================================== quora ===================================== (NO CITE AVAILABLE) 
+_repo_quora = "toughdata/quora-question-answer-dataset"
+_QUORA_MAX_LEN = 100
+
+def _process_quora(example):
+    pass
+
+def _load_quora(train=False):
+    if train:
+        dataset = load_dataset(_repo_quora, split="train")
+    else:
+        raise NotImplementedError
+    dataset.filter(lambda example: len(example["answer"]) <= _QUORA_MAX_LEN, keep_in_memory=True)
+    #dataset = dataset.map(_process_quora, keep_in_memory=True)
+    
+    return dataset
+    
+    
+# ================================== alpaca =====================================
+_repo_alpaca = "tatsu-lab/alpaca"
+_ALPACA_MAX_LEN = 100
+
+def _process_alpaca(example):
+    if example["input"] != "":
+        example["instruction"] += " " + example["input"]
+        
+    return example
+        
+def _load_alpaca(train=False):
+    if train:
+        dataset = load_dataset(_repo_alpaca, split="train")
+    else:
+        raise NotImplementedError
+    dataset.filter(lambda example: len(example["output"]) <= _ALPACA_MAX_LEN, keep_in_memory=True)
+    dataset = dataset.map(_process_alpaca, keep_in_memory=True)
+    
+    return dataset
+    
+#-----------------------------------------------------------------------------------------------------------------------------------
 LOADERS = {
     'anli': _load_anli,
     'common_gen': _load_common_gen,
     'squad': _load_squad,
     'cosmos_qa': _load_cosmos_qa,
     'coqa': _load_coqa,
-    'human_eval': _load_human_eval,
+    'python_code': _load_python_code,
     'xsum': _load_xsum,
-    'bool_q': _load_bool_q
+    'bool_q': _load_bool_q,
+    'eng_spa': _load_eng_spa,
+    'paws': _load_paws,
+    'quora': _load_quora,
+    'alpaca': _load_alpaca
 }
 
 ################################### Main Class #################################
@@ -199,5 +274,4 @@ class TaskConfigs:
         dataset = LOADERS.get(task_name, lambda _: "Invalid option")(train)
         if not isinstance(dataset, Dataset):
             raise KeyError(f"Unknown task '{task_name}'. Please choose from {list(LOADERS.keys())}")
-        
         return dataset

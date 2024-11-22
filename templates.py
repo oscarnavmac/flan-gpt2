@@ -25,12 +25,9 @@ PATTERNS = {
         ("What is the title of this article:\n\n{context}", "{title}"),
     ],
     
-    # NOT IMPLEMENTED BECAUSE THE DATASET IS ALREADY FORMATTED
-    "human_eval": [
-        ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"),
-        ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"),
-        ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"), ("{prompt}", "{canonical_solution}"),
-        ("{prompt}", "{canonical_solution}"),
+    # NOT IMPLEMENTED BECAUSE THE DATASET IS ALREADY FORMATTED IN INSTRUCTIONS
+    "python_code": [
+        ("{instruction}", "{solution}") for _ in range(10)
     ],
     
     "cosmos_qa": [
@@ -96,5 +93,41 @@ PATTERNS = {
         ("{passage}\n\nIs the following statement correct based on the text\n\n{question}\n\n{options_}", "{answer}"),
         ("{passage}\n\nIs this statement correct \"{question}\"?\n\n{options_}", "{answer}"),
         ("Is it true that {question} based on the following text?\n\n{passage}\n\n{options_}", "{answer}"),
+    ],
+    
+    "eng_spa": [
+        ("How do you say \"{eng}\" in Spanish?", "{spa}"),
+        ("{spa} How do you say this sentence in English?", "{eng}"),
+        ("{eng} Say this using Spanish", "{spa}"),
+        ("Translate from English to Spanish:\n\n{eng}", "{spa}"),
+        ("Translate from Spanish to English:\n\n{spa}", "{eng}"),
+        ("Translate \"{spa}\" from Spanish to English.", "{eng}"),
+        ("Translate \"{eng}\" to Spanish.", "{spa}"),
+        ("Translate the following.\n\nEnglish: {eng}\n\nSpanish:", "{spa}"),
+        ("Write a sentence in English.", "{eng}"),
+        ("Write a sentence in Spanish.", "{spa}"),
+    ],
+    
+    "paws": [
+        ("Here are two sentences:\n{sentence1}\n{sentence2}\nDo they have the same meaning?\n{options_}", "{answer}"),
+        ("Here are two sentences:\n\n{sentence1}\n\n{sentence2}\nAre the two sentences saying the same thing?\n{options_}", "{answer}"),
+        ("{sentence1}\n\n{sentence2}\n\nDo the above sentences mean the same thing?\n{options_}", "{answer}"),
+        ("{sentence1}\n\n{sentence2}\n\nPlease tell me if the sentences above mean the same.\n{options_}", "{answer}"),
+        ("{sentence1}\n{sentence2}\nAre these sentences conveying the same meaning?\n{options_}", "{answer}"),
+        ("{sentence1}\n{sentence2}\nIf the first sentence is true, is the second one also true?\n{options_}", "{answer}"),
+        ("{sentence1}\n{sentence2}\nAre these two sentences paraphrases of each other?\n{options_}", "{answer}"),
+        ("Do the following two sentences have the same meaning?\n{sentence1}\n{sentence2}\n\n{options_}", "{answer}"),
+        ("Do these two sentences mean the same thing?\n{sentence1}\n{sentence2}\n\n{options_}", "{answer}"),
+        ("Do these sentences have the same meaning?\n{sentence1}\n{sentence2}\n\n{options_}", "{answer}"),
+    ],
+    
+    # NOT IMPLEMENTED BECAUSE THE DATASET IS ALREADY FORMATTED IN INSTRUCTIONS
+    "quora": [
+        ("{question}", "{answer}") for _ in range(10)
+    ],
+    
+    # NOT IMPLEMENTED BECAUSE THE DATASET IS ALREADY FORMATTED IN INSTRUCTIONS
+    "alpaca": [
+        ("{instruction}", "{output}") for _ in range(10)
     ],
 }
