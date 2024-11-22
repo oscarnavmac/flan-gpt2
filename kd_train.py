@@ -11,8 +11,6 @@ import logging
 import pickle
 from torch.amp import autocast
 
-#TODO: Implement Batch training
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = 'openai-community/gpt2-medium'
 teacher_name = 'google/flan-t5-large'
@@ -67,14 +65,14 @@ train_student_dataloader = DataLoader(
 # Define hyperparameters:
 optimizer = AdamW(student_model.parameters(), lr=5e-4, weight_decay=0.01)
 
-push_to_hub = True
+push_to_hub = False
 save_model = True
 logging_steps = 100
 save_steps = 100000
 gradient_accumulation_steps = 4
 
 # Distillation hyperparameters
-alpha = 0.5
+alpha = 0.80
 temperature = 2.5
 
 num_epochs = 1
@@ -118,21 +116,22 @@ for epoch in range(num_epochs):
         student_logits = student_outputs.logits
         teacher_logits = teacher_outputs.logits
         
-        # Apply Softmax to get each probabily distribution
-        student_probs = F.softmax(student_logits / temperature, dim=-1)
-        teacher_probs = F.softmax(teacher_logits / temperature, dim=-1)
-        
         #print("LOGITS")
         #print(student_logits.size())
         #print(student_logits)
         #print(teacher_logits.size())
         #print(teacher_logits)
         
+        # Apply Softmax to get each probabily distribution
+        student_probs = F.softmax(student_logits / temperature, dim=-1)
+        teacher_probs = F.softmax(teacher_logits / temperature, dim=-1)
+        
         #max_length = max(max(student_answer_size), max(teacher_answer_size))
         #print(max_length)
         
         # Warning: this is hardcoded!!!
-        target_idx = student_batch["input_ids"].size(1) - student_targets.size(1)
+        target_idx = student_batch["input_ids"].size(1) - student_targets.size(1) - 1 # Consider EOS token too
+        
         #is_value = student_batch["labels"].eq(-100)
         #target_idx = int(is_value.sum())
         student_probs = student_probs[:, target_idx:, :]
@@ -149,6 +148,13 @@ for epoch in range(num_epochs):
         #print("ANSWER $$$$$$$$")
         #print(tokeni2.decode(teacher_batch["labels"][0]))
         
+        #print("PROBS")
+        #print(student_probs.size())
+        #print(student_probs)
+        #print(teacher_probs.size())
+        #print(teacher_probs)
+
+        
         # Sort in descending order to align probabilities
         student_probs = student_probs.sort(dim=-1, descending=True).values
         teacher_probs = teacher_probs.sort(dim=-1, descending=True).values
@@ -160,11 +166,13 @@ for epoch in range(num_epochs):
         elif diff_size < 0:
             student_probs = F.pad(student_probs, (0, abs(diff_size)), value=0)
             
-        #print("NEW LOGITS AFTER PADDING")
-        #print(student_logits.size())
-        #print(student_logits)
-        #print(teacher_logits.size())
-        #print(teacher_logits)
+        #print("NEW PROBS AFTER PADDING")
+        #print(student_probs.size())
+        #print(student_probs)
+        #print(teacher_probs.size())
+        #print(teacher_probs)
+        
+        #break
         
         #print("CALCULATING LOSS")
         
@@ -186,10 +194,12 @@ for epoch in range(num_epochs):
         #print(student_loss)
         #print(float(loss))
         
+        loss /= gradient_accumulation_steps
+        
         
         # Vanilla training from here
         
-        running_loss += loss.item() / gradient_accumulation_steps
+        running_loss += loss.item() #/ gradient_accumulation_steps
         loss.backward()
         
         if (step + 1) % gradient_accumulation_steps == 0:
@@ -201,6 +211,7 @@ for epoch in range(num_epochs):
                 total_norm = student.get_global_grad_norm()
                 
                 logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
+                print(f"Student Loss {student_loss.item() / gradient_accumulation_steps}")
 
             clip_grad_norm_(student_model.parameters(), max_norm=1.0)
             optimizer.step()

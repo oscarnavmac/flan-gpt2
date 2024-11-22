@@ -3,7 +3,7 @@ from tasks import TaskConfigs
 import random
 import templates
 
-MAX_NUM_EXAMPLES = 10000
+MAX_NUM_EXAMPLES = 1000
 TASKS = {
     "common_gen": "allenai/common_gen",
     "xsum": "EdinburghNLP/xsum",
