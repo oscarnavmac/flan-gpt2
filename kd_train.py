@@ -27,7 +27,7 @@ student_model.to(torch.bfloat16)
 student_model.gradient_checkpointing_enable()
 
 # Load instruct dataset (4 tasks)
-datasets_names = ["common_gen", "anli", "bool_q", "xsum"]
+datasets_names = ["common_gen", "anli", "bool_q", "xsum", "python_code", "cosmos_qa", "squad", "coqa", "eng_spa", "paws"]
 dataset = create_instruct_dataset(datasets_names)
 
 # Tokenize datasets
@@ -73,7 +73,7 @@ gradient_accumulation_steps = 4
 
 # Distillation hyperparameters
 alpha = 0.80
-temperature = 2.5
+temperature = 1.0
 
 num_epochs = 1
 num_training_steps = num_epochs * len(train_student_dataloader) // gradient_accumulation_steps

@@ -7,8 +7,10 @@ def accuracy(references, predictions):
     acc_metric = evaluate.load("accuracy")
     return acc_metric.compute(references=references, predictions=predictions)
 
-def bleu(references, predictions):
-    pass
+def sacrebleu(references, predictions):
+    bleu_metric = evaluate.load("sacrebleu")
+    score = bleu_metric.compute(references=references, predictions=predictions)["score"] / 100
+    return {"score": score}
 
 def squad(references, predictions):
     squad_metric = evaluate.load("squad")
@@ -27,10 +29,14 @@ rougeLsum = partial(rouge, rouge_type="rougeLsum")
 METRIC = {
     'anli': accuracy,
     'common_gen': rouge1,
-    'squad': None, #squad - qa metrics
+    'squad': rougeLsum, #squad - qa metrics
     'cosmos_qa': accuracy,
-    'coqa': None, #squad - qa metrics
-    'human_eval': None,
+    'coqa': rougeLsum, #squad - qa metrics
+    'python_code': sacrebleu,
     'xsum': rougeLsum,
-    'bool_q': accuracy
+    'bool_q': accuracy,
+    'eng_spa': sacrebleu,
+    'paws': accuracy,
+    'quora': rougeLsum,
+    'alpaca': rougeLsum
 }

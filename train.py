@@ -22,7 +22,7 @@ model.gradient_checkpointing_enable()
 #model.to(torch.bfloat16)
 
 # Load instruct dataset (4 tasks)
-datasets_names = ["common_gen", "anli", "bool_q", "xsum"]
+datasets_names = ["common_gen", "anli", "bool_q", "xsum", "python_code", "cosmos_qa", "squad", "coqa", "eng_spa", "paws"]
 dataset = create_instruct_dataset(datasets_names)
 
 # Tokenize examples

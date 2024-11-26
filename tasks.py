@@ -125,6 +125,7 @@ def _process_python_code(example):
     return example
 
 def _load_python_code(train=False):
+    #dataset.train_test_split(test_size=0.3)
     if train:
         dataset = load_dataset(_repo_python_code, split='train')
     else:
@@ -206,6 +207,7 @@ def _load_eng_spa(train=False):
         dataset = load_dataset(_repo_eng_spa, split="train")
     else:
         dataset = load_dataset(_repo_eng_spa, split="test")
+        #dataset.filter(lambda example: len(example["answer"].strip()) >= 10, keep_in_memory=True)
     #dataset = dataset.map(_process_eng_spa, keep_in_memory=True)
     
     return dataset
