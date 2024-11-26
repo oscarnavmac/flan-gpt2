@@ -87,7 +87,7 @@ def _load_cosmos_qa(train=False):
     if train:
         dataset = load_dataset(_repo_cosmos_qa, split='train', trust_remote_code=True)
     else:
-        dataset = load_dataset(_repo_cosmos_qa, split='dev', trust_remote_code=True)
+        dataset = load_dataset(_repo_cosmos_qa, split='test', trust_remote_code=True)
     dataset = dataset.map(_process_cosmos_qa, keep_in_memory=True)
     
     return dataset
@@ -114,7 +114,7 @@ def _load_coqa(train=False):
 
 # ================================ python_code ================================== (No templates required, already formatted in insructions)
 #_repo_human_eval = "openai/openai_humaneval" # "nickrosh/Evol-Instruct-Code-80k-v1" # "leo009/python-programming-instructions"
-_PYTHONCODE_MAX_LEN = 300
+_PYTHONCODE_MAX_LEN = 1500
 _repo_python_code = "iamtarun/python_code_instructions_18k_alpaca"
 
 def _process_python_code(example):
@@ -125,12 +125,15 @@ def _process_python_code(example):
     return example
 
 def _load_python_code(train=False):
-    #dataset.train_test_split(test_size=0.3)
+    
+    dataset = load_dataset(_repo_python_code, split='train')
+    dataset_dict = dataset.train_test_split(test_size=0.1, shuffle=False) # Since dataset only has "train" split
+    
     if train:
-        dataset = load_dataset(_repo_python_code, split='train')
+        dataset = dataset_dict["train"]
     else:
-        raise NotImplementedError
-    dataset.filter(lambda example: len(example["output"]) <= _PYTHONCODE_MAX_LEN, keep_in_memory=True)
+        dataset = dataset_dict["test"]
+    dataset = dataset.filter(lambda example: len(example["output"]) <= _PYTHONCODE_MAX_LEN, keep_in_memory=True)
     dataset = dataset.map(_process_python_code, keep_in_memory=True)
     
     return dataset
@@ -152,7 +155,7 @@ def _load_xsum(train=False):
     else:
         dataset = load_dataset(_repo_xsum, split='validation')
     #dataset = dataset.map(_process_xsum, keep_in_memory=True)
-    dataset.filter(lambda example: len(example["document"]) <= _XSUM_MAX_LEN, keep_in_memory=True)
+    dataset = dataset.filter(lambda example: len(example["document"]) <= _XSUM_MAX_LEN, keep_in_memory=True)
     
     return dataset
 
@@ -224,7 +227,7 @@ def _load_quora(train=False):
         dataset = load_dataset(_repo_quora, split="train")
     else:
         raise NotImplementedError
-    dataset.filter(lambda example: len(example["answer"]) <= _QUORA_MAX_LEN, keep_in_memory=True)
+    dataset = dataset.filter(lambda example: len(example["answer"]) <= _QUORA_MAX_LEN, keep_in_memory=True)
     #dataset = dataset.map(_process_quora, keep_in_memory=True)
     
     return dataset
@@ -245,7 +248,7 @@ def _load_alpaca(train=False):
         dataset = load_dataset(_repo_alpaca, split="train")
     else:
         raise NotImplementedError
-    dataset.filter(lambda example: len(example["output"]) <= _ALPACA_MAX_LEN, keep_in_memory=True)
+    dataset = dataset.filter(lambda example: len(example["output"]) <= _ALPACA_MAX_LEN, keep_in_memory=True)
     dataset = dataset.map(_process_alpaca, keep_in_memory=True)
     
     return dataset

@@ -65,14 +65,14 @@ train_student_dataloader = DataLoader(
 # Define hyperparameters:
 optimizer = AdamW(student_model.parameters(), lr=5e-4, weight_decay=0.01)
 
-push_to_hub = False
+push_to_hub = True
 save_model = True
 logging_steps = 100
 save_steps = 100000
 gradient_accumulation_steps = 4
 
 # Distillation hyperparameters
-alpha = 0.80
+alpha = 1.5
 temperature = 1.0
 
 num_epochs = 1
@@ -188,7 +188,8 @@ for epoch in range(num_epochs):
             distillation_loss[i] = abs(student_probs[i][:size] - teacher_probs[i][:size]).sum(-1).mean(-1)
         distillation_loss = distillation_loss.mean()
         
-        loss = alpha * student_loss + (1-alpha) * distillation_loss
+        #loss = alpha * student_loss + (1-alpha) * distillation_loss
+        loss = student_loss + (alpha * distillation_loss)
         
         #print(distillation_loss)
         #print(student_loss)
@@ -211,7 +212,7 @@ for epoch in range(num_epochs):
                 total_norm = student.get_global_grad_norm()
                 
                 logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
-                print(f"Student Loss {student_loss.item() / gradient_accumulation_steps}")
+                #print(f"Student Loss {student_loss.item() / gradient_accumulation_steps}")
 
             clip_grad_norm_(student_model.parameters(), max_norm=1.0)
             optimizer.step()
