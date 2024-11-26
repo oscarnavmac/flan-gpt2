@@ -72,7 +72,7 @@ save_steps = 100000
 gradient_accumulation_steps = 4
 
 # Distillation hyperparameters
-alpha = 1.5
+alpha = 0.75
 temperature = 1.0
 
 num_epochs = 1
@@ -188,8 +188,8 @@ for epoch in range(num_epochs):
             distillation_loss[i] = abs(student_probs[i][:size] - teacher_probs[i][:size]).sum(-1).mean(-1)
         distillation_loss = distillation_loss.mean()
         
-        #loss = alpha * student_loss + (1-alpha) * distillation_loss
-        loss = student_loss + (alpha * distillation_loss)
+        loss = alpha * student_loss + (1-alpha) * distillation_loss
+        #loss = student_loss + (alpha * distillation_loss)
         
         #print(distillation_loss)
         #print(student_loss)

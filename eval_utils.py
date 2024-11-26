@@ -25,9 +25,9 @@ class Evaluation:
         self.tokenizer = tokenizer
         self.device = device
         
-        #self.model.eval()
+        self.model.eval()
 
-    def generate(self, input_list, return_full_text=True, max_tokens=100):
+    def generate(self, input_list, return_full_text=True, max_tokens=200):
         outputs = []
         for input in tqdm(input_list, desc="Generating responses... "):
             #input += " ### Response: "
