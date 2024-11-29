@@ -73,7 +73,7 @@ class Evaluation:
         return outputs
     
     
-    def evaluate(self, dataset_name, num_samples=None, training_set=False, return_full_text=True):
+    def evaluate(self, dataset_name, num_samples=None, training_set=False, return_full_text=True, max_tokens=200):
         
         loaded = TaskConfigs.load_task(dataset_name, training_set).filter(
             lambda example, idx: idx < num_samples, with_indices=True)
@@ -91,7 +91,7 @@ class Evaluation:
             predictions = self.rank_classification(inputs_list=input_list, options_list=options)
         else:
             references = dataset["completion"]
-            predictions = self.generate(input_list, return_full_text)
+            predictions = self.generate(input_list, return_full_text=return_full_text, max_tokens=max_tokens)
             
         metric_fn = METRIC[dataset_name]
         result = list(metric_fn(references, predictions).values()) # Get value of the only element in the dict

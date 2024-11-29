@@ -35,6 +35,7 @@ def _load_anli(train=False):
     
 # =============================== squad ========================================
 _repo_squad = "rajpurkar/squad"
+_SQUAD_MAX_LEN = 2000
 
 def _process_squad(example):
     example["answer"] = example["answers"]["text"][0]
@@ -46,6 +47,7 @@ def _load_squad(train=False):
         dataset = load_dataset(_repo_squad, split='train')
     else:
         dataset = load_dataset(_repo_squad, split='validation')
+    dataset = dataset.filter(lambda example: len(example["context"]) <= _SQUAD_MAX_LEN, keep_in_memory=True)
     dataset = dataset.map(_process_squad, keep_in_memory=True)
     
     return dataset
@@ -95,7 +97,7 @@ def _load_cosmos_qa(train=False):
 
 # ================================= CoQA ======================================= (WARNING: Dataset contains less than 10k examples)
 _repo_coqa = "stanfordnlp/coqa"
-
+_COQA_MAX_LEN = 1600
 def _process_coqa(example):
     example["numbered_questions"] = enumerate_items(example["questions"])
     example["numbered_answers"] = enumerate_items(example["answers"]["input_text"])
@@ -107,6 +109,7 @@ def _load_coqa(train=False):
         dataset = load_dataset(_repo_coqa, split='train')
     else:
         dataset = load_dataset(_repo_coqa, split='validation')
+    dataset = dataset.filter(lambda example: len(example["story"]) <= _COQA_MAX_LEN, keep_in_memory=True)
     dataset = dataset.map(_process_coqa, keep_in_memory=True)
     
     return dataset
@@ -162,6 +165,7 @@ def _load_xsum(train=False):
 
 # ============================== bool_q ==========================================
 _repo_bool_q = 'google/boolq'
+_COSMOSQA_MAX_LEN = 2000
 
 def _process_bool_q(example):
     example["options"] = ["True", "False"]
@@ -174,6 +178,7 @@ def _load_bool_q(train=False):
         dataset = load_dataset(_repo_bool_q, split='train')
     else:
         dataset = load_dataset(_repo_bool_q, split='validation')
+    dataset = dataset.filter(lambda example: len(example["passage"]) <= _COSMOSQA_MAX_LEN, keep_in_memory=True)
     dataset = dataset.map(_process_bool_q, keep_in_memory=True)
     
     return dataset
