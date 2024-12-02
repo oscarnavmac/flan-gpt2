@@ -14,7 +14,7 @@ from torch.amp import autocast
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = 'openai-community/gpt2-medium'
 teacher_name = 'google/flan-t5-large'
-repo_name = "flan-gpt2-medium-distill_V2"
+repo_name = "flan-gpt2-medium-distill_V3"
 
 student = GPT2Model(checkpoint, device)
 teacher = T5Model(teacher_name, device)
@@ -67,7 +67,7 @@ optimizer = AdamW(student_model.parameters(), lr=5e-4, weight_decay=0.01)
 
 push_to_hub = True
 save_model = True
-logging_steps = 100
+logging_steps = 500
 save_steps = 100000
 gradient_accumulation_steps = 4
 

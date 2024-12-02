@@ -12,7 +12,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 checkpoint = 'openai-community/gpt2-medium'
 
-repo_name = "gpt2-multitask-4_V2"
+repo_name = "gpt2-multitask_V3"
 
 gpt2_model = GPT2Model(checkpoint, device)
 

@@ -89,7 +89,7 @@ def _load_cosmos_qa(train=False):
     if train:
         dataset = load_dataset(_repo_cosmos_qa, split='train', trust_remote_code=True)
     else:
-        dataset = load_dataset(_repo_cosmos_qa, split='test', trust_remote_code=True)
+        dataset = load_dataset(_repo_cosmos_qa, split='validation', trust_remote_code=True)
     dataset = dataset.map(_process_cosmos_qa, keep_in_memory=True)
     
     return dataset
