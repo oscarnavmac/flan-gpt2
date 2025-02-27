@@ -147,7 +147,7 @@ def _load_python_code(train=False):
 
 # ============================== xsum ==========================================
 _repo_xsum = "EdinburghNLP/xsum"
-_XSUM_MAX_LEN = 3000
+_XSUM_MAX_LEN = 2800
 
 def _process_xsum(example):
     pass
