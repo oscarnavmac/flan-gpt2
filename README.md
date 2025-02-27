@@ -1,9 +1,9 @@
-# Fine-Tuning GPT-2 on Multi-Task Instructions
+# Distilling GPT-2 on Multi-Task Instructions
 
-Fine-tuning GPT-2 on the FLANv1 dataset.
+Distilling GPT-2 on a multi-task instruction dataset.
 
 ![knowledge-distillation](./images/tasks.png)
-_Tasks chosen from the FLANv1 dataset (muffin)._
+_Tasks collection used to finetune/distill GPT-2._
 
 For now, we will only focus on fours tasks and later expand to the whole dataset.
 
