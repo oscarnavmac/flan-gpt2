@@ -44,7 +44,7 @@ See the [evaluation notebook](https://colab.research.google.com/drive/1tfUkfX2p_
 For very few examples we actually saw some zero-shot behavior. 
 
 <figure>
-<img src="./images/qualitative.png" width="400" />
+<img src="./images/qualitative.png" width="700" />
 <figcaption><i>Tasks collection used to finetune/distill GPT-2.</i></figcaption>
 </figure>
 
