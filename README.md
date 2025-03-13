@@ -43,7 +43,10 @@ See the [evaluation notebook](https://colab.research.google.com/drive/1tfUkfX2p_
 
 For very few examples we actually saw some zero-shot behavior. 
 
-![knowledge-distillation](./images/qualitative.png)
+<figure>
+<img src="./images/qualitative.png" width="400" />
+<figcaption><i>Tasks collection used to finetune/distill GPT-2.</i></figcaption>
+</figure>
 
 We argue that the model was able to generate a dialogue even though it was never explicitly trained with such task. Also in the QA, the model didn't return a translation or another question, but in return it responded properly.
 
