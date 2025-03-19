@@ -14,10 +14,10 @@ checkpoint = 'openai-community/gpt2-medium'
 
 repo_name = "gpt2-multitask_V3"
 
-gpt2_model = GPT2Model(checkpoint, device)
+wrapped_model = GPT2Model(checkpoint, device)
 
 # Load model and tokenizer
-model = gpt2_model.get_model()
+model = wrapped_model.get_model()
 model.gradient_checkpointing_enable()
 #model.to(torch.bfloat16)
 
@@ -27,7 +27,7 @@ dataset = create_instruct_dataset(datasets_names)
 
 # Tokenize examples
 tokenized_dataset = dataset.map(
-    gpt2_model.tokenize_function,
+    wrapped_model.tokenize_function,
     remove_columns=["prompt", "completion"],
     batched=True,
     batch_size=500
@@ -37,7 +37,7 @@ tokenized_dataset = dataset.map(
 tokenized_dataset.set_format("torch")
 
 train_dataloader = DataLoader(
-    tokenized_dataset, shuffle=False, batch_size=1, collate_fn=gpt2_model.get_collator()
+    tokenized_dataset, shuffle=False, batch_size=1, collate_fn=wrapped_model.get_collator()
 )
 
 
@@ -105,7 +105,7 @@ for epoch in range(num_epochs):
                 losses.append(float(loss))
                 running_loss = 0
                 
-                total_norm = gpt2_model.get_global_grad_norm()
+                total_norm = wrapped_model.get_global_grad_norm()
                 
                 logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
             
@@ -121,16 +121,16 @@ for epoch in range(num_epochs):
         if save_model and (global_step + 1) % save_steps == 0:
             logging.info("saving model...")
             model.save_pretrained(repo_name)
-            gpt2_model.get_tokenizer().save_pretrained(repo_name)
+            wrapped_model.get_tokenizer().save_pretrained(repo_name)
 
 if save_model:
     model.save_pretrained(repo_name)
-    gpt2_model.get_tokenizer().save_pretrained(repo_name)
+    wrapped_model.get_tokenizer().save_pretrained(repo_name)
 
 # Push the model to the repo
 if push_to_hub:
     model.push_to_hub(repo_name, commit_message=f"Uploaded/updated model with loss {losses[-1]}")
-    gpt2_model.get_tokenizer().push_to_hub(repo_name)
+    wrapped_model.get_tokenizer().push_to_hub(repo_name)
     
 # Saving model losses
 with open('losses_ft.pkl', 'wb') as f:
