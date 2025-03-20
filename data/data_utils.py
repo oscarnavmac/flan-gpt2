@@ -1,9 +1,8 @@
 from datasets import concatenate_datasets
-from tasks import TaskConfigs
+from data.tasks import TaskConfigs
 import random
-import templates
+import data.templates as templates
 
-MAX_NUM_EXAMPLES = 10000
 TASKS = {
     "common_gen": "allenai/common_gen",
     "xsum": "EdinburghNLP/xsum",
@@ -37,11 +36,11 @@ def format_instructions(example, patterns_list):
     return example
 
 
-def create_instruct_dataset(tasks_list, training_set=True): #check
+def create_instruct_dataset(max_num_examples, tasks_list, training_set=True): #check
     datasets = []
     for name in tasks_list:
         loaded = TaskConfigs.load_task(name, training_set).filter(
-            lambda example, idx: idx < MAX_NUM_EXAMPLES, with_indices=True)
+            lambda example, idx: idx < max_num_examples, with_indices=True)
         patterns = templates.PATTERNS[name]
         dataset = loaded.map(format_instructions,
                             #load_from_cache_file=False,
