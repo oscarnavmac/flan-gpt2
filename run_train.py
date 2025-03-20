@@ -69,3 +69,4 @@ else:
 # Example usage:
 # python run_train.py --distill -m gpt -c openai-community/gpt2-medium -n 100 --num_epochs 1
 # python run_train.py -n 10 --num_epochs 1 --save_model --push_to_hub
+# nohup python run_train.py -n 10 --num_epochs 1 > results.log 2>&1 &

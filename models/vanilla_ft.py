@@ -37,7 +37,7 @@ class VanillaFT:
         self.wrapped_model.get_tokenizer().save_pretrained(path)
 
     def train(self, num_epochs=1, save_model=True, push_to_hub=True,
-            logging_steps=10, save_steps=1000000, gradient_accumulation_steps=4, max_steps=None):
+            logging_steps=100, save_steps=1000000, gradient_accumulation_steps=4, max_steps=None):
         
         model = self.wrapped_model.get_model()
         model.gradient_checkpointing_enable()
@@ -70,6 +70,9 @@ class VanillaFT:
         logging.basicConfig(level=logging.INFO)
         repo_path = os.path.join(self.repo_dir, self.repo_name)
         os.makedirs(repo_path, exist_ok=True)
+        
+        logging.info(f"lr: {5e-4}, weight_decay: {0.01}, gradient_accumulation_steps: {gradient_accumulation_steps}")
+        logging.info(f"Training {self.repo_name} for {num_epochs} epochs with {num_training_steps} steps")
 
         # TRAIN!!!!!
         losses = []
