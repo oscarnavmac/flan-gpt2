@@ -1,6 +1,6 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from eval_utils import Evaluation
+from eval.eval_utils import Evaluation
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = "gpt2-multitask-4"

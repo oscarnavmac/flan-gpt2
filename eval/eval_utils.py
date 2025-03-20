@@ -1,7 +1,7 @@
-from metrics import METRIC
-from tasks import TaskConfigs
-from data_utils import format_instructions
-import templates
+from eval.metrics import METRIC
+from data.tasks import TaskConfigs
+from data.data_utils import format_instructions
+import data.templates as templates
 from tqdm import tqdm
 import re
 import torch
