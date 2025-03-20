@@ -1,7 +1,7 @@
 from tqdm.auto import tqdm
 from transformers import get_linear_schedule_with_warmup
-from data_utils import create_instruct_dataset
-from model_utils import T5Model, GPT2Model
+from data.data_utils import create_instruct_dataset
+from models.model_utils import T5Model, GPT2Model
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_ 
