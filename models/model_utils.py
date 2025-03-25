@@ -104,3 +104,22 @@ class PythiaModel(MixinModel):
 
 
 # TODO: Add more models here (SmolLM2Model, OPT, BlooM, etc.)
+class SmolLMModel(MixinModel):
+    """
+    SmolLM model class
+    """
+    def __init__(self, checkpoint, device):
+        self.model = AutoModelForCausalLM.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
+        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
+        self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
+        self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
+        self.model.config.pad_token_id = self.tokenizer.pad_token_id
+
+    def tokenize_function(self, example):
+        text = [p + c + self.tokenizer.eos_token for p, c in zip(example["prompt"], example["completion"])]
+        input_encodings = self.tokenizer(text, truncation=True)
+        target_encodings = self.tokenizer(example["completion"], truncation=True)
+
+        return {"input_ids": input_encodings["input_ids"],
+                "attention_mask": input_encodings["attention_mask"],
+                "targets": target_encodings["input_ids"]}
