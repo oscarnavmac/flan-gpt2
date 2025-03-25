@@ -7,6 +7,7 @@ import re
 import torch
 import warnings
 
+
 def convert(text, options):
     if text in options:
         return options.index(text)
@@ -19,6 +20,7 @@ def get_label(generated, options):
     label = convert(cleaned_word, options)
     return label
 
+
 class Evaluation:
     def __init__(self, model, tokenizer, device):
         self.model = model
@@ -27,9 +29,9 @@ class Evaluation:
         
         self.model.eval()
 
-    def generate(self, input_list, return_full_text=True, max_tokens=200):
+    def generate(self, prompts_list, return_full_text=True, max_tokens=200):
         outputs = []
-        for input in tqdm(input_list, desc="Generating responses... "):
+        for input in tqdm(prompts_list, desc="Generating responses... "):
             #input += " ### Response: "
             inputs = self.tokenizer(input, return_tensors='pt').to(self.device)
             input_length = len(self.tokenizer.decode(inputs["input_ids"][0]))
@@ -51,13 +53,12 @@ class Evaluation:
 
         return outputs
     
-    
-    def rank_classification(self, inputs_list, options_list):
+    def rank_classification(self, prompts_list, options_list):
         """" Rank Classification """
         outputs = []
-        for prompt, options in tqdm(zip(inputs_list, options_list),
+        for prompt, options in tqdm(zip(prompts_list, options_list),
                                     desc="Generating predictions... ",
-                                    total=len(inputs_list)):
+                                    total=len(prompts_list)):
             choice_probs = []
             for completion in options:
                 inputs = self.tokenizer(prompt + completion, return_tensors='pt').to(self.device)
@@ -72,7 +73,6 @@ class Evaluation:
             
         return outputs
     
-    
     def evaluate(self, dataset_name, num_samples=None, training_set=False, return_full_text=True, max_tokens=200):
         
         loaded = TaskConfigs.load_task(dataset_name, training_set).filter(
@@ -83,21 +83,20 @@ class Evaluation:
                             #load_from_cache_file=False,
                             batched=False,
                             fn_kwargs={"patterns_list": patterns})
-        input_list = dataset["prompt"]
+        prompts_list = dataset["prompt"]
         
-        if 'options' in dataset[0]: # rank classification
+        if 'options' in dataset[0]: # apply rank classification
             references = dataset["label"]
             options = dataset["options"]
-            predictions = self.rank_classification(inputs_list=input_list, options_list=options)
+            predictions = self.rank_classification(prompts_list=prompts_list, options_list=options)
         else:
             references = dataset["completion"]
-            predictions = self.generate(input_list, return_full_text=return_full_text, max_tokens=max_tokens)
+            predictions = self.generate(prompts_list, return_full_text=return_full_text, max_tokens=max_tokens)
             
         metric_fn = METRIC[dataset_name]
         result = list(metric_fn(references, predictions).values()) # Get value of the only element in the dict
         
         return float(result[0])
-    
     
     def evaluate_dataset(self, dataset_name, num_samples=None, training_set=False, return_full_text=True):
         warnings.warn("deprecated", DeprecationWarning)
@@ -112,8 +111,8 @@ class Evaluation:
                             fn_kwargs={"patterns_list": patterns})
         
         references = dataset["completion"]
-        input_list = dataset["prompt"]
-        predictions = self.generate(input_list, return_full_text)
+        prompts_list = dataset["prompt"]
+        predictions = self.generate(prompts_list, return_full_text)
         metric_fn = METRIC[dataset_name]
 
         if 'options' in dataset[0]:
