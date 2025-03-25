@@ -1,5 +1,5 @@
 from models.vanilla_ft import VanillaFT
-from models.model_utils import GPT2Model, T5Model, PythiaModel
+from models.model_utils import GPT2Model, T5Model, PythiaModel, SmolLMModel
 from data.data_utils import create_instruct_dataset
 import argparse
 import torch
@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--distill", action="store_true",
                     help="Whether to use knowledge distillation")
 parser.add_argument("-m", "--model", type=str, default="gpt", const="gpt", 
-                    nargs="?", choices=["gpt", "t5", "pythia"],
+                    nargs="?", choices=["gpt", "t5", "pythia", "smol"],
                     help="Foundational model to use for training")
 parser.add_argument("-c", "--checkpoint", type=str, default="openai-community/gpt2-medium",
                     help="Checkpoint to use for training")
@@ -47,11 +47,16 @@ elif args.model == "t5":
         model = T5Model(args.checkpoint, device)
     except:
         raise ValueError("Invalid checkpoint for T5 model")
-else:
+elif args.model == "pythia":
     try:
         model = PythiaModel(args.checkpoint, device)
     except:
         raise ValueError("Invalid checkpoint for Pythia model")
+elif args.model == "smol":
+    try:
+        model = SmolLMModel(args.checkpoint, device)
+    except:
+        raise ValueError("Invalid checkpoint for SmolLM model")
 
 # Repo name
 postfix = "-distill" if args.distill else "-ft"
