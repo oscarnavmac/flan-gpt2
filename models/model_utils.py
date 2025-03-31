@@ -48,9 +48,11 @@ class GPT2Model(MixinModel):
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
         #self.response_template = " ### Response: "
         #self.data_collator = DataCollatorForCompletionOnlyLM([44386, 18261, 25], tokenizer=self.tokenizer)
-        #self.tokenizer.pad_token = self.tokenizer.eos_token #ONLY FOR GPT-2
-        self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
-        self.model.config.pad_token_id = self.tokenizer.pad_token_id
+        #self.tokenizer.pad_token = self.tokenizer.eos_token #ONLY FOR GPT-2 Open generation
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
+            self.model.config.pad_token_id = self.tokenizer.pad_token_id
+            self.model.resize_token_embeddings(len(self.tokenizer))
 
     def tokenize_function(self, example):
         #text = example["prompt"] + "\n" + example["completion"] -> OLD WAY
@@ -112,8 +114,10 @@ class SmolLMModel(MixinModel):
         self.model = AutoModelForCausalLM.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
-        self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
-        self.model.config.pad_token_id = self.tokenizer.pad_token_id
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
+            self.model.config.pad_token_id = self.tokenizer.pad_token_id
+            self.model.resize_token_embeddings(len(self.tokenizer))
 
     def tokenize_function(self, example):
         text = [p + c + self.tokenizer.eos_token for p, c in zip(example["prompt"], example["completion"])]

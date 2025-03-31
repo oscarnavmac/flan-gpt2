@@ -39,7 +39,6 @@ dataset = create_instruct_dataset(args.num_samples, datasets_names)
 if args.model == "gpt":
     try:
         model = GPT2Model(args.checkpoint, device)
-        print("Model loaded with checkpoint: ", args.checkpoint)
     except:
         raise ValueError("Invalid checkpoint for GPT-2 model")
 elif args.model == "t5":
@@ -57,6 +56,8 @@ elif args.model == "smol":
         model = SmolLMModel(args.checkpoint, device)
     except:
         raise ValueError("Invalid checkpoint for SmolLM model")
+    
+print("Model loaded with checkpoint: ", args.checkpoint)
 
 # Repo name
 postfix = "-distill" if args.distill else "-ft"
