@@ -61,7 +61,7 @@ class ULD:
         self.wrapped_student.get_tokenizer().save_pretrained(path)
 
 
-    def train(self, alpha=0.75, temperature=1.0, num_epochs=1, save_model=True, push_to_hub=True,
+    def train(self, alpha, temperature, num_epochs=1, save_model=True, push_to_hub=True,
               logging_steps=500, save_steps=1000000, gradient_accumulation_steps=4, max_steps=None):
 
         # Get models
