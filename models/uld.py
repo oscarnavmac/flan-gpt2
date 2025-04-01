@@ -27,7 +27,7 @@ class ULD:
     def preprocess(self, batch_size):
         # Tokenize datasets
         tokenized_teacher_dataset = self.dataset.map(
-            self.wrapped_student.tokenize_function,
+            self.wrapped_teacher.tokenize_function,
             remove_columns=["prompt", "completion"],
             desc="Tokenizing teacher inputs",
             batched=True,
@@ -88,6 +88,7 @@ class ULD:
         logging.info(f"lr: {scheduler.get_lr()}, gradient_accumulation_steps: {gradient_accumulation_steps}")
         logging.info(f"Training {self.repo_name} for {num_epochs} epochs with {num_training_steps} steps")
 
+        print(self.student_dataloader, self.teacher_dataloader)
         # TRAIN!!!!!
         losses = []
         teacher.eval()
@@ -211,7 +212,7 @@ class ULD:
                         losses.append(float(loss))
                         running_loss = 0
                         
-                        total_norm = student.get_global_grad_norm()
+                        total_norm = self.wrapped_student.get_global_grad_norm()
                         
                         logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
                         #print(f"Student Loss {student_loss.item() / gradient_accumulation_steps}")
