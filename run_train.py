@@ -1,4 +1,5 @@
 from models.vanilla_ft import VanillaFT
+from models.uld import ULD
 from models.model_utils import GPT2Model, T5Model, PythiaModel, SmolLMModel
 from data.data_utils import create_instruct_dataset
 import argparse
@@ -65,7 +66,13 @@ repo_name = args.repo_name if args.repo_name is not None else "flan-" + str(args
 
 # Train model
 if args.distill:
+    checkpoint = "google/flan-t5-large"
+    teacher_model = T5Model(checkpoint, device)
+    
     print("Training using Knowledge Distillation!")
+    uld = ULD(model, teacher_model, dataset, repo_name, device)
+    uld.train(alpha=0.75, temperature=1.0, num_epochs=args.num_epochs, 
+              save_model=args.save_model, push_to_hub=args.push_to_hub)
     
 else:
     print("Training WITHOUT distillation, vanilla fine-tuning instead!")
