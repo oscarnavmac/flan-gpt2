@@ -8,15 +8,15 @@ import pickle
 from torch.amp import autocast
 
 class VanillaFT:
-    def __init__(self, wrapped_model, dataset, repo_name, device, repo_dir="output"):
+    def __init__(self, wrapped_model, dataset, repo_name, device, repo_dir="output", batch_size=1):
         self.wrapped_model = wrapped_model
         self.dataset = dataset
         self.repo_name = repo_name
         self.device = device
-        self.train_dataloader = self.preprocess()
+        self.train_dataloader = self.preprocess(batch_size)
         self.repo_dir = repo_dir
         
-    def preprocess(self):
+    def preprocess(self, batch_size):
         # Tokenize examples
         tokenized_dataset = self.dataset.map(
             self.wrapped_model.tokenize_function,
@@ -28,7 +28,7 @@ class VanillaFT:
 
         # Get Training DataLoader
         return DataLoader(
-            tokenized_dataset, shuffle=False, batch_size=1, collate_fn=self.wrapped_model.get_collator()
+            tokenized_dataset, shuffle=False, batch_size=batch_size, collate_fn=self.wrapped_model.get_collator()
         )
         
     def save_model(self, model, path):
@@ -71,7 +71,7 @@ class VanillaFT:
         repo_path = os.path.join(self.repo_dir, self.repo_name)
         os.makedirs(repo_path, exist_ok=True)
         
-        logging.info(f"lr: {5e-4}, weight_decay: {0.01}, gradient_accumulation_steps: {gradient_accumulation_steps}")
+        logging.info(f"lr: {scheduler.get_lr()}, gradient_accumulation_steps: {gradient_accumulation_steps}")
         logging.info(f"Training {self.repo_name} for {num_epochs} epochs with {num_training_steps} steps")
 
         # TRAIN!!!!!
