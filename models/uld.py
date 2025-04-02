@@ -235,7 +235,7 @@ class ULD:
         # Push the model to the repo
         if push_to_hub:
             student.push_to_hub(self.repo_name, commit_message=f"Uploaded/updated model with loss {losses[-1]}")
-            student.get_tokenizer().push_to_hub(self.repo_name)
+            self.wrapped_student.get_tokenizer().push_to_hub(self.repo_name)
             
         losses_path = os.path.join(repo_path, "losses.pkl")    
         # Saving model losses
