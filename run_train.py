@@ -30,10 +30,10 @@ parser.add_argument("--repo_name", type=str, default=None,
 args = parser.parse_args()
 
 
-# Load instruct dataset (10 tasks) 
+# Load instruct dataset (12 tasks) 
 datasets_names = ["common_gen", "anli", "bool_q", "xsum", 
                   "python_code", "cosmos_qa", "squad", "coqa", 
-                  "eng_spa", "paws"]
+                  "eng_spa", "paws", "quora", "alpaca"]
 dataset = create_instruct_dataset(args.num_samples, datasets_names)
 
 # Load model
