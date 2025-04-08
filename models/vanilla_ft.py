@@ -84,7 +84,8 @@ class VanillaFT:
         for epoch in range(num_epochs):
             for batch in self.train_dataloader:
                 batch = {k: v.to(self.device) for k, v in batch.items()}
-                batch.pop("targets") # Ignore this, is for other purposes which is not important right now
+                if "targets" in batch:
+                    batch.pop("targets")
                 #with autocast("cuda", dtype=torch.bfloat16):
                 outputs = model(**batch)
                 loss = outputs.loss / gradient_accumulation_steps
