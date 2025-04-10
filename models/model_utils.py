@@ -1,7 +1,7 @@
 from transformers import (AutoTokenizer, 
                           AutoModelForCausalLM, AutoModelForSeq2SeqLM, 
                           DataCollatorForLanguageModeling, DataCollatorForSeq2Seq)
-from trl import DataCollatorForCompletionOnlyLM
+#from trl import DataCollatorForCompletionOnlyLM
 import torch
 
 
