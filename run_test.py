@@ -21,7 +21,7 @@ parser.add_argument("--n_shot", type=int, default=0,
                     help="Number of examples to use for few-shot evaluation")
 parser.add_argument("--no_save_results", action="store_true",
                     help="Whether to save the evaluation results")
-parser.add_argument("--save_dir", type=str, default=".",
+parser.add_argument("--save_dir", type=str, default="output",
                     help="Directory to save the evaluation results")
 args = parser.parse_args()
 
@@ -58,6 +58,8 @@ elif args.model == "smol":
     
 print("Model loaded with checkpoint: ", args.checkpoint)
 
+model_name = args.checkpoint.split("/")[-1] if "/" in args.checkpoint else args.checkpoint
+save_path = f"{args.save_dir}/{model_name}_results.csv"
 
 # Load evaluation class
 eval = Evaluation(model.get_model(), model.get_tokenizer(), device)
@@ -85,12 +87,12 @@ for dataset_name in datasets_names:
     if not args.no_save_results:
         # append results to CSV file
         header = ["dataset", "score"]
-        with open(f"{args.save_dir}/{args.checkpoint}_results.csv", mode="a", newline="") as f:
+        with open(save_path, mode="a", newline="") as f:
             writer = csv.writer(f)
             if f.tell() == 0:
                 writer.writerow(header)
             writer.writerow([dataset_name, result])
-        print(f"Results saved to {args.save_dir}/eval_results.csv")
+        print(f"Results saved to {save_path}")
                 
 # Example usage:
 # nohup python run_test.py -m smol -c OscarNav/flan-SmolLM-135M-distill -n 10 --n_shot 0 > eval_results.log 2>&1 &
