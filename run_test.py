@@ -34,25 +34,25 @@ datasets_names = ["common_gen", "anli", "bool_q", "xsum",
 if args.model == "gpt":
     try:
         model = GPT2Model(args.checkpoint, device)
-        return_full_text = True
+        return_full_text = False
     except:
         raise ValueError("Invalid checkpoint for GPT-2 model")
 elif args.model == "t5":
     try:
         model = T5Model(args.checkpoint, device)
-        return_full_text = False
+        return_full_text = True
     except:
         raise ValueError("Invalid checkpoint for T5 model")
 elif args.model == "pythia":
     try:
         model = PythiaModel(args.checkpoint, device)
-        return_full_text = True
+        return_full_text = False
     except:
         raise ValueError("Invalid checkpoint for Pythia model")
 elif args.model == "smol":
     try:
         model = SmolLMModel(args.checkpoint, device)
-        return_full_text = True
+        return_full_text = False
     except:
         raise ValueError("Invalid checkpoint for SmolLM model")
     
