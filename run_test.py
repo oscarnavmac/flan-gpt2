@@ -4,6 +4,7 @@ from data.data_utils import create_instruct_dataset
 import argparse
 import csv
 import torch
+import os
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -19,11 +20,22 @@ parser.add_argument("-n", "--num_samples", type=int, default=10000,
                     help="Number of samples to evaluate on")
 parser.add_argument("--n_shot", type=int, default=0,
                     help="Number of examples to use for few-shot evaluation")
+parser.add_argument("--train_set", action="store_true",
+                    help="Whether to use the training set for evaluation")
 parser.add_argument("--no_save_results", action="store_true",
                     help="Whether to save the evaluation results")
-parser.add_argument("--save_dir", type=str, default="output",
+parser.add_argument("--save_dir", type=str, default="results",
                     help="Directory to save the evaluation results")
 args = parser.parse_args()
+
+print(f"Evaluating on {args.num_samples} samples from {args.model} model with checkpoint {args.checkpoint}")
+print(f"Using {args.n_shot} examples for few-shot evaluation")
+if args.train_set:
+    eval_split = "train"
+    print("ALERT: Using training set for evaluation!!!")
+else:
+    eval_split = "test"
+    print("Using test set for evaluation")
 
 # Load instruct dataset (10 tasks)
 datasets_names = ["common_gen", "anli", "bool_q", "xsum", 
@@ -59,7 +71,8 @@ elif args.model == "smol":
 print("Model loaded with checkpoint: ", args.checkpoint)
 
 model_name = args.checkpoint.split("/")[-1] if "/" in args.checkpoint else args.checkpoint
-save_path = f"{args.save_dir}/{model_name}_results.csv"
+os.makedirs(args.save_dir, exist_ok=True)
+save_path = f"{args.save_dir}/{model_name}_{eval_split}.csv"
 
 # Load evaluation class
 eval = Evaluation(model.get_model(), model.get_tokenizer(), device)
@@ -77,7 +90,7 @@ for dataset_name in datasets_names:
         
     try:
          result = eval.evaluate(dataset_name, args.num_samples, 
-                                training_set=True, return_full_text=return_full_text)
+                                training_set=args.train_set, return_full_text=return_full_text)
     except Exception as e:
         print(f"Error evaluating {dataset_name}: {e}")
         continue
