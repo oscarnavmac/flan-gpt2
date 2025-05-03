@@ -76,7 +76,7 @@ print("Model loaded with checkpoint: ", args.checkpoint)
 
 model_name = args.checkpoint.split("/")[-1] if "/" in args.checkpoint else args.checkpoint
 os.makedirs(args.save_dir, exist_ok=True)
-save_path = f"{args.save_dir}/{model_name}_{eval_split}.csv"
+save_path = f"{args.save_dir}/{model_name}_{args.n_shot}-shot_{total_num_samples}_{eval_split}.csv"
 
 # Load evaluation class
 eval = Evaluation(model.get_model(), model.get_tokenizer(), device)
