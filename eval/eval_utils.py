@@ -84,7 +84,7 @@ class Evaluation:
         
         return prompt_list
     
-    def evaluate(self, dataset_name, num_samples=None, n_shot=0, training_set=False, return_full_text=True, max_tokens=200):
+    def evaluate(self, dataset_name, num_samples=None, n_shot=0, training_set=False, return_full_text=True, max_tokens=200, verbose=False):
         """ Evaluate a dataset with the model """
         loaded = TaskConfigs.load_task(dataset_name, training_set).filter(
             lambda example, idx: idx < num_samples, with_indices=True)
@@ -95,10 +95,11 @@ class Evaluation:
                             batched=False,
                             fn_kwargs={"patterns_list": patterns})
         prompts_list = self.build_prompt_list(dataset, n_shot=n_shot)
-        print("Prompts:")
-        for p in prompts_list:
-            print(p)
-        print("\n\n\n")
+        if verbose:
+            print("Prompts:")
+            for p in prompts_list:
+                print(p)
+            print("\n\n\n")
         
         if 'options' in dataset[0]: # apply rank classification
             references = dataset["label"][n_shot:]
@@ -108,14 +109,15 @@ class Evaluation:
             references = dataset["completion"][n_shot:]
             predictions = self.generate(prompts_list, return_full_text=return_full_text, max_tokens=max_tokens)
             
-        print("References:")
-        for r in references:
-            print(r)
-        print("\n\n\n")
-        print("Predictions:")
-        for p in predictions:
-            print(p)
-        print("\n\n\n")
+        if verbose:
+            print("References:")
+            for r in references:
+                print(r)
+            print("\n\n\n")
+            print("Predictions:")
+            for p in predictions:
+                print(p)
+            print("\n\n\n")
         metric_fn = METRIC[dataset_name]
         result = list(metric_fn(references, predictions).values()) # Get value of the only element in the dict
         

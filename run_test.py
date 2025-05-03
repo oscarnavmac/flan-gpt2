@@ -89,7 +89,8 @@ for dataset_name in datasets_names:
         
     try:
          result = eval.evaluate(dataset_name, args.num_samples, n_shot=args.n_shot,
-                                training_set=args.train_set, return_full_text=return_full_text)
+                                training_set=args.train_set, return_full_text=return_full_text,
+                                verbose=True)
     except Exception as e:
         print(f"Error evaluating {dataset_name}: {e}")
         continue
