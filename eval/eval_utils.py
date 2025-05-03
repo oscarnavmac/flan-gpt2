@@ -73,8 +73,19 @@ class Evaluation:
             
         return outputs
     
-    def evaluate(self, dataset_name, num_samples=None, training_set=False, return_full_text=True, max_tokens=200):
+    def build_prompt_list(self, dataset, n_shot=0):
+        """ Build the prompt list for the model using first n_shot examples of the dataset """
+        prompt_list = dataset["prompt"]
+        if n_shot > 0:
+            shot_prompts, prompt_list = prompt_list[:n_shot], prompt_list[n_shot:]
+            shot_examples = [shot_prompts[i] + " " + dataset["completion"][i] for i in range(n_shot)]
+            for i in range(len(prompt_list)):
+                prompt_list[i] = "\n\n".join(shot_examples) + "\n\n" + prompt_list[i]
         
+        return prompt_list
+    
+    def evaluate(self, dataset_name, num_samples=None, n_shot=0, training_set=False, return_full_text=True, max_tokens=200):
+        """ Evaluate a dataset with the model """
         loaded = TaskConfigs.load_task(dataset_name, training_set).filter(
             lambda example, idx: idx < num_samples, with_indices=True)
         patterns = templates.PATTERNS[dataset_name][:1] # Only first template for any task
@@ -83,16 +94,28 @@ class Evaluation:
                             #load_from_cache_file=False,
                             batched=False,
                             fn_kwargs={"patterns_list": patterns})
-        prompts_list = dataset["prompt"]
+        prompts_list = self.build_prompt_list(dataset, n_shot=n_shot)
+        print("Prompts:")
+        for p in prompts_list:
+            print(p)
+        print("\n\n\n")
         
         if 'options' in dataset[0]: # apply rank classification
-            references = dataset["label"]
+            references = dataset["label"][n_shot:]
             options = dataset["options"]
             predictions = self.rank_classification(prompts_list=prompts_list, options_list=options)
         else:
-            references = dataset["completion"]
+            references = dataset["completion"][n_shot:]
             predictions = self.generate(prompts_list, return_full_text=return_full_text, max_tokens=max_tokens)
             
+        print("References:")
+        for r in references:
+            print(r)
+        print("\n\n\n")
+        print("Predictions:")
+        for p in predictions:
+            print(p)
+        print("\n\n\n")
         metric_fn = METRIC[dataset_name]
         result = list(metric_fn(references, predictions).values()) # Get value of the only element in the dict
         

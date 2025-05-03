@@ -28,8 +28,12 @@ parser.add_argument("--save_dir", type=str, default="results",
                     help="Directory to save the evaluation results")
 args = parser.parse_args()
 
-print(f"Evaluating on {args.num_samples} samples from {args.model} model with checkpoint {args.checkpoint}")
-print(f"Using {args.n_shot} examples for few-shot evaluation")
+total_num_samples = args.num_samples - args.n_shot
+
+print(f"Evaluating on {total_num_samples} samples from {args.model} model with checkpoint {args.checkpoint}")
+if args.n_shot > 0:
+    print(f"Using {args.n_shot} examples for few-shot evaluation")
+
 if args.train_set:
     eval_split = "train"
     print("ALERT: Using training set for evaluation!!!")
@@ -82,14 +86,9 @@ for dataset_name in datasets_names:
     print(f"Evaluating {dataset_name}...")
     # Load dataset
     dataset = create_instruct_dataset(args.num_samples, [dataset_name])
-    
-    # Evaluate model
-    if args.n_shot > 0:
-        #dataset = dataset.select(range(args.n_shot))
-        pass
         
     try:
-         result = eval.evaluate(dataset_name, args.num_samples, 
+         result = eval.evaluate(dataset_name, args.num_samples, n_shot=args.n_shot,
                                 training_set=args.train_set, return_full_text=return_full_text)
     except Exception as e:
         print(f"Error evaluating {dataset_name}: {e}")
