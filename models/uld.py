@@ -62,7 +62,7 @@ class ULD:
 
 
     def train(self, alpha, temperature, num_epochs=1, save_model=True, push_to_hub=True,
-              logging_steps=500, save_steps=1000000, gradient_accumulation_steps=4, max_steps=None):
+              logging_steps=100, save_steps=1000000, gradient_accumulation_steps=4, max_steps=None):
 
         # Get models
         student = self.wrapped_student.get_model()

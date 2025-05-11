@@ -72,7 +72,7 @@ if args.distill:
     print("Training using Knowledge Distillation!")
     print("Teacher Model: ", checkpoint)
     uld = ULD(model, teacher_model, dataset, repo_name, device)
-    uld.train(alpha=0.75, temperature=1.0, num_epochs=args.num_epochs, 
+    uld.train(alpha=0.75, temperature=1.5, num_epochs=args.num_epochs, 
               save_model=args.save_model, push_to_hub=args.push_to_hub)
     
 else:
