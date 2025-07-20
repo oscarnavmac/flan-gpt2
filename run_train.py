@@ -12,6 +12,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--distill", action="store_true",
                     help="Whether to use knowledge distillation")
+parser.add_argument("--lora", action="store_true",
+                    help="Whether to use LoRA (Low-Rank Adaptation) training")
 parser.add_argument("-m", "--model", type=str, default="gpt", const="gpt", 
                     nargs="?", choices=["gpt", "t5", "pythia", "smol"],
                     help="Foundational model to use for training")
@@ -27,6 +29,13 @@ parser.add_argument("--push_to_hub", action="store_true",
                     help="Whether to push the model to the Hub")
 parser.add_argument("--repo_name", type=str, default=None,
                     help="Name of the repository to save the model to")
+# LoRA-specific arguments
+parser.add_argument("--lora_r", type=int, default=16,
+                    help="LoRA rank (default: 16)")
+parser.add_argument("--lora_alpha", type=int, default=32,
+                    help="LoRA alpha parameter (default: 32)")
+parser.add_argument("--lora_dropout", type=float, default=0.1,
+                    help="LoRA dropout rate (default: 0.1)")
 args = parser.parse_args()
 
 
@@ -61,7 +70,12 @@ elif args.model == "smol":
 print("Model loaded with checkpoint: ", args.checkpoint)
 
 # Repo name
-postfix = "-distill" if args.distill else "-ft"
+if args.distill:
+    postfix = "-distill"
+elif args.lora:
+    postfix = "-lora"
+else:
+    postfix = "-ft"
 repo_name = args.repo_name if args.repo_name is not None else "flan-" + str(args.checkpoint).split("/")[-1] + postfix
 
 # Train model
@@ -74,14 +88,22 @@ if args.distill:
     uld = ULD(model, teacher_model, dataset, repo_name, device)
     uld.train(alpha=0.75, temperature=1.5, num_epochs=args.num_epochs, 
               save_model=args.save_model, push_to_hub=args.push_to_hub)
-    
 else:
     print("Training WITHOUT distillation, vanilla fine-tuning instead!")
     vanilla_ft = VanillaFT(model, dataset, repo_name, device)
     vanilla_ft.train(num_epochs=args.num_epochs, save_model=args.save_model, push_to_hub=args.push_to_hub)
 
 # Example usage:
-# python run_train.py --distill -m gpt -c openai-community/gpt2-medium -n 100 --num_epochs 1
+# Vanilla fine-tuning:
 # python run_train.py -n 10 --num_epochs 1 --save_model --push_to_hub
-# nohup python run_train.py -n 10 --num_epochs 1 > results.log 2>&1 &
+# S
+# LoRA training:
+# python run_train.py --lora -m gpt -c openai-community/gpt2-medium -n 1000 --num_epochs 1 --save_model --push_to_hub
+# python run_train.py --lora -m gpt -c openai-community/gpt2-medium -n 1000 --lora_r 8 --lora_alpha 16 --lora_dropout 0.05
+#
+# Knowledge distillation:
+# python run_train.py --distill -m gpt -c openai-community/gpt2-medium -n 100 --num_epochs 1
+# 
+# Background execution:
+# nohup python run_train.py --lora -n 2000 --num_epochs 1 --save_model > lora_results.log 2>&1 &
 # nohup python run_train.py -m smol -c HuggingFaceTB/SmolLM-135M -n 2000 --num_epochs 1 --save_model --push_to_hub > results.log 2>&1 &
