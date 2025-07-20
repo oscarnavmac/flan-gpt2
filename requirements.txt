@@ -4,3 +4,4 @@ torch==2.5.1
 tqdm==4.66.5
 transformers==4.46.2
 rouge_score==0.1.2
+peft==0.16.0
