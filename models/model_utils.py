@@ -3,14 +3,32 @@ from transformers import (AutoTokenizer,
                           DataCollatorForLanguageModeling, DataCollatorForSeq2Seq)
 #from trl import DataCollatorForCompletionOnlyLM
 import torch
+from peft import LoraConfig, TaskType, PeftModel
+
 
 
 class MixinModel():
     """
     Simple class to manage models more easily
     """
-    def get_model(self):
-        return self.model
+    def get_model(self, peft=False, lora_config=None):
+        if not peft:
+            return self.model
+        
+        if lora_config is None:
+            self.model.resize_token_embeddings(len(self.tokenizer))
+            return PeftModel.from_pretrained(self.model, self.checkpoint)
+        
+        lora_config = LoraConfig(
+            r=lora_config.get("rank", 16),  # LoRA rank
+            lora_alpha=lora_config.get("alpha", 32),  # LoRA alpha parameter
+            lora_dropout=lora_config.get("dropout", 0.1),  # LoRA dropout rate
+            bias=lora_config.get("bias", "none"),  # Bias handling
+            task_type=self.task_type,
+            target_modules=self.target_modules
+        )
+        self.model.add_adapter(lora_config, adapter_name="lora_1")
+        return self.model#get_peft_model(self.model, lora_config)
 
     def get_tokenizer(self):
         return self.tokenizer
@@ -44,8 +62,11 @@ class GPT2Model(MixinModel):
     """
     def __init__(self, checkpoint, device):
         self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)
+        self.checkpoint = checkpoint
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
+        self.task_type = TaskType.CAUSAL_LM
+        self.target_modules = ["c_attn", "c_proj"]  # Specific to GPT2 models
         #self.response_template = " ### Response: "
         #self.data_collator = DataCollatorForCompletionOnlyLM([44386, 18261, 25], tokenizer=self.tokenizer)
         #self.tokenizer.pad_token = self.tokenizer.eos_token #ONLY FOR GPT-2 Open generation
