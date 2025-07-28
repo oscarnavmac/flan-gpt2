@@ -73,7 +73,7 @@ class GPT2Model(MixinModel):
     GPT-2 model class
     """
     def __init__(self, checkpoint: str, device: str, peft: bool = False):
-        self.super().__init__(checkpoint, device, peft)
+        super().__init__(checkpoint, device, peft)
         if peft:
             try:
                 peft_config = PeftConfig.from_pretrained(checkpoint)
@@ -81,7 +81,7 @@ class GPT2Model(MixinModel):
             except ValueError:
                 print("No PEFT config found, using base checkpoint")
                 pass
-        
+        print(checkpoint)
         self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(self.device)
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
