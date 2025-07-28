@@ -3,7 +3,7 @@ from transformers import (AutoTokenizer,
                           DataCollatorForLanguageModeling, DataCollatorForSeq2Seq)
 #from trl import DataCollatorForCompletionOnlyLM
 import torch
-from peft import LoraConfig, TaskType, PeftModel
+from peft import LoraConfig, TaskType, PeftModel, PeftConfig
 
 
 
@@ -11,12 +11,24 @@ class MixinModel():
     """
     Simple class to manage models more easily
     """
+    def __init__(self, checkpoint: str, device: str, peft: bool = False):
+        """
+        Initialize the model, tokenizer, and data collator.
+        """
+        self.checkpoint = checkpoint
+        self.device = device
+        self.peft = peft
+        self.model = None
+        self.tokenizer = None
+        self.data_collator = None
+        self.task_type = None
+        self.target_modules = None
+        
     def get_model(self, peft=False, lora_config=None):
         if not peft:
             return self.model
         
         if lora_config is None:
-            self.model.resize_token_embeddings(len(self.tokenizer))
             return PeftModel.from_pretrained(self.model, self.checkpoint)
         
         lora_config = LoraConfig(
@@ -60,9 +72,17 @@ class GPT2Model(MixinModel):
     """
     GPT-2 model class
     """
-    def __init__(self, checkpoint, device):
-        self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)
-        self.checkpoint = checkpoint
+    def __init__(self, checkpoint: str, device: str, peft: bool = False):
+        self.super().__init__(checkpoint, device, peft)
+        if peft:
+            try:
+                peft_config = PeftConfig.from_pretrained(checkpoint)
+                checkpoint = peft_config.base_model_name_or_path
+            except ValueError:
+                print("No PEFT config found, using base checkpoint")
+                pass
+        
+        self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(self.device)
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
         self.task_type = TaskType.CAUSAL_LM
