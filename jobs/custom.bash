@@ -1,0 +1,2 @@
+# nohup python run_test.py -m gpt -c OscarNav/flan-gpt2-medium-distill -n 101 --n_shot 0 --train_set > results/eval_results_flan-gpt2-distill.log 2>&1 &
+nohup python run_train.py --distill --num_epochs 3 --save_model --push_to_hub > train_results_gpt2-med-distill.log 2>&1 &
