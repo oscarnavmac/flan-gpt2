@@ -43,7 +43,7 @@ class VanillaFT:
 
         model = self.wrapped_model.get_model(peft=peft, lora_params=lora_params)
         if peft:
-            print("Training with LoRA parameters:", lora_params)
+           logging.info(f"Training with LoRA parameters: {lora_params}")
         self.wrapped_model.print_trainable_parameters()
         model.gradient_checkpointing_enable()
         model.to(torch.bfloat16)
@@ -78,6 +78,8 @@ class VanillaFT:
         
         logging.info(f"lr: {scheduler.get_lr()}, gradient_accumulation_steps: {gradient_accumulation_steps}")
         logging.info(f"Training {self.repo_name} for {num_epochs} epochs with {num_training_steps} steps")
+        if torch.cuda.is_available():
+            logging.info(f"GPU Memory Usage: {torch.cuda.memory_allocated() / 1e9} GB")
 
         # TRAIN!!!!!
         losses = []
@@ -110,7 +112,9 @@ class VanillaFT:
                         total_norm = self.wrapped_model.get_global_grad_norm()
                         
                         logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
-                    
+                        if torch.cuda.is_available():
+                            logging.info(f"GPU Memory Usage: {torch.cuda.memory_allocated() / 1e9} GB")
+
                     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                     optimizer.step()
                     scheduler.step()
@@ -118,9 +122,6 @@ class VanillaFT:
                 
                     progress_bar.update(1)
                     global_step+=1
-                    # Print GPU memory usage
-                    if torch.cuda.is_available():
-                        logging.info(f"GPU Memory Usage: {torch.cuda.memory_allocated() / 1e9} GB")
                 step+=1
 
                 if save_model and (global_step + 1) % save_steps == 0:
