@@ -44,7 +44,7 @@ args = parser.parse_args()
 # Load instruct dataset (12 tasks) 
 datasets_names = ["common_gen", "anli", "bool_q", "xsum", 
                   "python_code", "cosmos_qa", "squad", "coqa", 
-                  "eng_spa", "paws", "quora", "alpaca"]
+                  "eng_spa", "paws"]#, "quora", "alpaca"]
 dataset = create_instruct_dataset(args.num_samples, datasets_names)
 
 # Load model
@@ -88,18 +88,19 @@ repo_name = args.repo_name if args.repo_name is not None else "flan-" + str(args
 
 # Train model
 if args.distill:
-    checkpoint = "google/flan-t5-large"
+    checkpoint = "google/flan-t5-xl"
     teacher_model = T5Model(checkpoint, device)
     
     print("Training using Knowledge Distillation!")
     print("Teacher Model: ", checkpoint)
     uld = ULD(model, teacher_model, dataset, repo_name, device)
-    uld.train(alpha=0.75, temperature=1.5, num_epochs=args.num_epochs, 
-              save_model=args.save_model, push_to_hub=args.push_to_hub)
+    uld.train(alpha=0.75, temperature=1.5, num_epochs=args.num_epochs, peft=args.lora,
+              lora_params=lora_params, save_model=args.save_model, push_to_hub=args.push_to_hub)
 else:
     print("Training WITHOUT distillation, vanilla fine-tuning instead!")
     vanilla_ft = VanillaFT(model, dataset, repo_name, device)
-    vanilla_ft.train(num_epochs=args.num_epochs, peft=args.lora, lora_params=lora_params, save_model=args.save_model, push_to_hub=args.push_to_hub)
+    vanilla_ft.train(num_epochs=args.num_epochs, peft=args.lora, 
+                     lora_params=lora_params, save_model=args.save_model, push_to_hub=args.push_to_hub)
 
 # Example usage:
 # Vanilla fine-tuning:

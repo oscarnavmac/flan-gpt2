@@ -7,7 +7,7 @@ from torch.optim import AdamW
 import torch
 import logging
 import pickle
-from torch.amp import autocast
+from models.model_utils import MixinModel
 import os
 
 #checkpoint = 'openai-community/gpt2-medium'
@@ -16,8 +16,8 @@ import os
 
 class ULD:
     def __init__(self, wrapped_student, wrapped_teacher, dataset, repo_name, device, repo_dir="output", batch_size=1):
-        self.wrapped_student = wrapped_student
-        self.wrapped_teacher = wrapped_teacher
+        self.wrapped_student: MixinModel = wrapped_student
+        self.wrapped_teacher: MixinModel = wrapped_teacher
         self.dataset = dataset
         self.repo_name = repo_name
         self.device = device
@@ -61,15 +61,20 @@ class ULD:
         self.wrapped_student.get_tokenizer().save_pretrained(path)
 
 
-    def train(self, alpha, temperature, num_epochs=1, save_model=True, push_to_hub=True,
+    def train(self, alpha, temperature, num_epochs=1, peft=False, lora_params=None, save_model=True, push_to_hub=True,
               logging_steps=100, save_steps=1000000, gradient_accumulation_steps=4, max_steps=None):
 
         # Get models
-        student = self.wrapped_student.get_model()
+        student = self.wrapped_student.get_model(peft=peft, lora_params=lora_params)
         teacher = self.wrapped_teacher.get_model()
+        teacher.to(torch.bfloat16)
+        
+        if peft:
+           logging.info(f"Training with LoRA parameters: {lora_params}")
 
+        self.wrapped_student.print_trainable_parameters()
         student.to(torch.bfloat16)
-        teacher.gradient_checkpointing_enable()
+        student.gradient_checkpointing_enable()
 
         # Define hyperparameters:
         optimizer = AdamW(student.parameters(), lr=5e-4, weight_decay=0.01)
@@ -87,6 +92,8 @@ class ULD:
         
         logging.info(f"lr: {scheduler.get_lr()}, gradient_accumulation_steps: {gradient_accumulation_steps}")
         logging.info(f"Training {self.repo_name} for {num_epochs} epochs with {num_training_steps} steps")
+        if torch.cuda.is_available():
+            logging.info(f"GPU Memory Usage: {torch.cuda.memory_allocated() / 1e9} GB")
 
         print(self.student_dataloader, self.teacher_dataloader)
         # TRAIN!!!!!
@@ -216,6 +223,8 @@ class ULD:
                         
                         logging.info(f"Loss: {loss}, lr: {scheduler.get_lr()}, grad_norm: {total_norm}, step: {global_step}")
                         #print(f"Student Loss {student_loss.item() / gradient_accumulation_steps}")
+                        if torch.cuda.is_available():
+                            logging.info(f"GPU Memory Usage: {torch.cuda.memory_allocated() / 1e9} GB")
 
                     clip_grad_norm_(student.parameters(), max_norm=1.0)
                     optimizer.step()
