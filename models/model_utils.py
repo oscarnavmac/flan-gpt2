@@ -15,6 +15,7 @@ class MixinModel():
         """
         Initialize the model, tokenizer, and data collator.
         """
+        # None values will be set in child classes
         self.checkpoint = checkpoint
         self.device = device
         self.peft = peft
@@ -24,18 +25,30 @@ class MixinModel():
         self.task_type = None
         self.target_modules = None
         
-    def get_model(self, peft=False, lora_config=None):
+        self.model_path = checkpoint
+        
+        if self.peft:
+            try:
+                peft_config = PeftConfig.from_pretrained(self.checkpoint)
+                self.model_path = peft_config.base_model_name_or_path
+            except ValueError:
+                print("No PEFT config found, using base checkpoint")
+                pass
+        
+    def get_model(self, peft=False, lora_params=None):
+        """Get the model, optionally with PEFT or LoRA applied."""
         if not peft:
             return self.model
-        
-        if lora_config is None:
+
+        # In evaluation mode, lora_params should be None
+        if lora_params is None:
             return PeftModel.from_pretrained(self.model, self.checkpoint)
         
         lora_config = LoraConfig(
-            r=lora_config.get("rank", 16),  # LoRA rank
-            lora_alpha=lora_config.get("alpha", 32),  # LoRA alpha parameter
-            lora_dropout=lora_config.get("dropout", 0.1),  # LoRA dropout rate
-            bias=lora_config.get("bias", "none"),  # Bias handling
+            r=lora_params["rank"],  # LoRA rank
+            lora_alpha=lora_params["alpha"],  # LoRA alpha parameter
+            lora_dropout=lora_params["dropout"],  # LoRA dropout rate
+            bias=lora_params["bias"],  # Bias handling
             task_type=self.task_type,
             target_modules=self.target_modules
         )
@@ -67,6 +80,22 @@ class MixinModel():
         total_norm = total_norm ** (1.0 / norm_type)
         return total_norm
     
+    def print_trainable_parameters(self):
+            """
+            Print the number of trainable parameters in the model.
+            """
+            trainable_params = 0
+            all_param = 0
+            for _, param in self.model.named_parameters():
+                all_param += param.numel()
+                if param.requires_grad:
+                    trainable_params += param.numel()
+            print(
+                f"Trainable params: {trainable_params} || "
+                f"All params: {all_param} || "
+                f"Trainable: {100 * trainable_params / all_param}%"
+            )
+    
 
 class GPT2Model(MixinModel):
     """
@@ -74,16 +103,8 @@ class GPT2Model(MixinModel):
     """
     def __init__(self, checkpoint: str, device: str, peft: bool = False):
         super().__init__(checkpoint, device, peft)
-        if peft:
-            try:
-                peft_config = PeftConfig.from_pretrained(checkpoint)
-                checkpoint = peft_config.base_model_name_or_path
-            except ValueError:
-                print("No PEFT config found, using base checkpoint")
-                pass
-        print(checkpoint)
-        self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(self.device)
-        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_path).to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
         self.task_type = TaskType.CAUSAL_LM
         self.target_modules = ["c_attn", "c_proj"]  # Specific to GPT2 models
@@ -111,9 +132,10 @@ class T5Model(MixinModel):
     """
     T5 model class
     """
-    def __init__(self, checkpoint, device):
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
-        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
+    def __init__(self, checkpoint, device, peft=False):
+        super().__init__(checkpoint, device, peft)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_path, torch_dtype=torch.bfloat16).to(device)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForSeq2Seq(self.tokenizer)
 
     def tokenize_function(self, example):
@@ -129,9 +151,10 @@ class PythiaModel(MixinModel):
     """
     Pythia model class
     """
-    def __init__(self, checkpoint, device):
-        self.model = AutoModelForCausalLM.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
-        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
+    def __init__(self, checkpoint, device, peft=False):
+        super().__init__(checkpoint, device, peft)
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_path, torch_dtype=torch.bfloat16).to(device)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
         self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
         self.model.config.pad_token_id = self.tokenizer.pad_token_id
@@ -151,9 +174,10 @@ class SmolLMModel(MixinModel):
     """
     SmolLM model class
     """
-    def __init__(self, checkpoint, device):
-        self.model = AutoModelForCausalLM.from_pretrained(checkpoint, torch_dtype=torch.bfloat16).to(device)
-        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint, clean_up_tokenization_spaces=True)
+    def __init__(self, checkpoint, device, peft=False):
+        super().__init__(checkpoint, device, peft)
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_path, torch_dtype=torch.bfloat16).to(device)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
         if self.tokenizer.pad_token is None:
             self.tokenizer.add_special_tokens({"pad_token": "<pad>"})

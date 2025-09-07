@@ -36,6 +36,8 @@ parser.add_argument("--lora_alpha", type=int, default=32,
                     help="LoRA alpha parameter (default: 32)")
 parser.add_argument("--lora_dropout", type=float, default=0.1,
                     help="LoRA dropout rate (default: 0.1)")
+parser.add_argument("--lora_bias", type=str, default="none", choices=["none", "all", "lora_only"],
+                    help="Bias handling in LoRA (default: none)")
 args = parser.parse_args()
 
 
@@ -48,32 +50,38 @@ dataset = create_instruct_dataset(args.num_samples, datasets_names)
 # Load model
 if args.model == "gpt":
     try:
-        model = GPT2Model(args.checkpoint, device)
+        model = GPT2Model(args.checkpoint, device, peft=args.lora)
     except:
         raise ValueError("Invalid checkpoint for GPT-2 model")
 elif args.model == "t5":
     try:
-        model = T5Model(args.checkpoint, device)
+        model = T5Model(args.checkpoint, device, peft=args.lora)
     except:
         raise ValueError("Invalid checkpoint for T5 model")
 elif args.model == "pythia":
     try:
-        model = PythiaModel(args.checkpoint, device)
+        model = PythiaModel(args.checkpoint, device, peft=args.lora)
     except:
         raise ValueError("Invalid checkpoint for Pythia model")
 elif args.model == "smol":
     try:
-        model = SmolLMModel(args.checkpoint, device)
+        model = SmolLMModel(args.checkpoint, device, peft=args.lora)
     except:
         raise ValueError("Invalid checkpoint for SmolLM model")
     
 print("Model loaded with checkpoint: ", args.checkpoint)
 
+# LoRA parameters
+lora_params = {
+    "rank": args.lora_r,
+    "alpha": args.lora_alpha,
+    "dropout": args.lora_dropout,
+    "bias": args.lora_bias
+}
+
 # Repo name
 if args.distill:
     postfix = "-distill"
-elif args.lora:
-    postfix = "-lora"
 else:
     postfix = "-ft"
 repo_name = args.repo_name if args.repo_name is not None else "flan-" + str(args.checkpoint).split("/")[-1] + postfix
@@ -91,7 +99,7 @@ if args.distill:
 else:
     print("Training WITHOUT distillation, vanilla fine-tuning instead!")
     vanilla_ft = VanillaFT(model, dataset, repo_name, device)
-    vanilla_ft.train(num_epochs=args.num_epochs, save_model=args.save_model, push_to_hub=args.push_to_hub)
+    vanilla_ft.train(num_epochs=args.num_epochs, peft=args.lora, lora_params=lora_params, save_model=args.save_model, push_to_hub=args.push_to_hub)
 
 # Example usage:
 # Vanilla fine-tuning:

@@ -7,10 +7,11 @@ import logging
 import pickle
 from torch.amp import autocast
 from peft import LoraConfig, get_peft_model, TaskType
+from models.model_utils import MixinModel
 
 class VanillaFT:
     def __init__(self, wrapped_model, dataset, repo_name, device, repo_dir="output", batch_size=1):
-        self.wrapped_model = wrapped_model
+        self.wrapped_model: MixinModel = wrapped_model
         self.dataset = dataset
         self.repo_name = repo_name
         self.device = device
@@ -37,11 +38,13 @@ class VanillaFT:
         model.save_pretrained(path)
         self.wrapped_model.get_tokenizer().save_pretrained(path)
 
-    def train(self, num_epochs=1, save_model=True, push_to_hub=True,
+    def train(self, num_epochs=1, peft=False, lora_params=None, save_model=True, push_to_hub=True,
             logging_steps=100, save_steps=1000000, gradient_accumulation_steps=4, max_steps=None):
 
-        model = self.wrapped_model.get_model(peft=True, lora_config={})
-        # model.print_trainable_parameters()
+        model = self.wrapped_model.get_model(peft=peft, lora_params=lora_params)
+        if peft:
+            print("Training with LoRA parameters:", lora_params)
+        self.wrapped_model.print_trainable_parameters()
         model.gradient_checkpointing_enable()
         model.to(torch.bfloat16)
         no_decay = ["bias", "LayerNorm.weight"]
@@ -115,6 +118,9 @@ class VanillaFT:
                 
                     progress_bar.update(1)
                     global_step+=1
+                    # Print GPU memory usage
+                    if torch.cuda.is_available():
+                        logging.info(f"GPU Memory Usage: {torch.cuda.memory_allocated() / 1e9} GB")
                 step+=1
 
                 if save_model and (global_step + 1) % save_steps == 0:
