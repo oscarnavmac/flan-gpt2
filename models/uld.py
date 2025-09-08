@@ -67,7 +67,6 @@ class ULD:
         # Get models
         student = self.wrapped_student.get_model(peft=peft, lora_params=lora_params)
         teacher = self.wrapped_teacher.get_model()
-        teacher.to(torch.bfloat16)
         
         if peft:
            logging.info(f"Training with LoRA parameters: {lora_params}")

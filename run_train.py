@@ -89,7 +89,7 @@ repo_name = args.repo_name if args.repo_name is not None else "flan-" + str(args
 # Train model
 if args.distill:
     checkpoint = "google/flan-t5-xl"
-    teacher_model = T5Model(checkpoint, device)
+    teacher_model = T5Model(checkpoint, device, quantization=True)  # Quantized teacher model
     
     print("Training using Knowledge Distillation!")
     print("Teacher Model: ", checkpoint)

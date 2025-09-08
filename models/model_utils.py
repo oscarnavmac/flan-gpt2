@@ -4,6 +4,7 @@ from transformers import (AutoTokenizer,
 #from trl import DataCollatorForCompletionOnlyLM
 import torch
 from peft import LoraConfig, TaskType, PeftModel, PeftConfig
+from transformers import BitsAndBytesConfig
 
 
 
@@ -11,7 +12,7 @@ class MixinModel():
     """
     Simple class to manage models more easily
     """
-    def __init__(self, checkpoint: str, device: str, peft: bool = False):
+    def __init__(self, checkpoint: str, device: str, peft: bool = False, quantization: bool = False):
         """
         Initialize the model, tokenizer, and data collator.
         """
@@ -132,9 +133,17 @@ class T5Model(MixinModel):
     """
     T5 model class
     """
-    def __init__(self, checkpoint, device, peft=False):
-        super().__init__(checkpoint, device, peft)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_path, torch_dtype=torch.bfloat16).to(device)
+    def __init__(self, checkpoint, device, peft=False, quantization=False):
+        super().__init__(checkpoint, device, peft, quantization)
+        
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True, # Use 4-bit precision model loading
+            bnb_4bit_quant_type="nf4", # Quantization type
+            bnb_4bit_compute_dtype="float16", # Compute dtype
+            bnb_4bit_use_double_quant=True, # Apply nested quantization
+        ) if quantization else None
+
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_path, quantization_config=bnb_config).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForSeq2Seq(self.tokenizer)
 
