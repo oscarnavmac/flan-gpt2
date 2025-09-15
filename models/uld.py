@@ -9,6 +9,9 @@ import logging
 import pickle
 from models.model_utils import MixinModel
 import os
+import pickle
+from models.model_utils import MixinModel
+import os
 
 #checkpoint = 'openai-community/gpt2-medium'
 #teacher_name = 'google/flan-t5-large'
@@ -23,6 +26,7 @@ class ULD:
         self.device = device
         self.student_dataloader, self.teacher_dataloader = self.preprocess(batch_size)
         self.repo_dir = repo_dir
+        self.ignore_index = -100
         
     def preprocess(self, batch_size):
         # Tokenize datasets
@@ -72,7 +76,17 @@ class ULD:
            logging.info(f"Training with LoRA parameters: {lora_params}")
 
         self.wrapped_student.print_trainable_parameters()
-        student.to(torch.bfloat16)
+        
+        # Check model dtype before converting
+        logging.info(f"Student model dtype before conversion: {next(student.parameters()).dtype}")
+        
+        # Don't force bfloat16 on LoRA models as it can cause issues
+        if not peft:
+            student.to(torch.bfloat16)
+            logging.info(f"Student model dtype after conversion: {next(student.parameters()).dtype}")
+        else:
+            logging.info("Skipping bfloat16 conversion for LoRA model")
+        
         student.gradient_checkpointing_enable()
 
         # Define hyperparameters:
@@ -112,12 +126,31 @@ class ULD:
                 student_batch = {k: v.to(self.device) for k, v in student_batch.items()}
                 teacher_batch = {k: v.to(self.device) for k, v in teacher_batch.items()}
                 
-                student_targets = student_batch["targets"]
-                student_batch.pop("targets")
+                # Debug: Print batch info
+                logging.info(f"Student batch shapes: {[f'{k}: {v.shape}' for k, v in student_batch.items()]}")
+                logging.info(f"Teacher batch shapes: {[f'{k}: {v.shape}' for k, v in teacher_batch.items()]}")
+                
+                # Check for NaN in input data
+                for k, v in student_batch.items():
+                    if torch.isnan(v).any():
+                        logging.error(f"NaN detected in student batch {k}")
+                        continue
+                for k, v in teacher_batch.items():
+                    if torch.isnan(v).any():
+                        logging.error(f"NaN detected in teacher batch {k}")
+                        continue
                 
                 #with autocast("cuda", dtype=torch.bfloat16):
                 student_outputs = student(**student_batch)
                 student_loss = student_outputs.loss
+                
+                # Debug: Check student loss immediately
+                logging.info(f"Raw student loss: {student_loss}, dtype: {student_loss.dtype}")
+                if torch.isnan(student_loss):
+                    logging.error("Student loss is NaN immediately after forward pass!")
+                    logging.error(f"Student logits range: [{student_outputs.logits.min()}, {student_outputs.logits.max()}]")
+                    logging.error(f"Student logits contains NaN: {torch.isnan(student_outputs.logits).any()}")
+                    continue
                 
                 with torch.no_grad():
                     teacher_outputs = teacher(**teacher_batch)
@@ -125,6 +158,18 @@ class ULD:
                 student_logits = student_outputs.logits
                 teacher_logits = teacher_outputs.logits
                 
+                # Get answer first token and answer size
+                student_answer_index, student_answer_size = self.__get_start_and_size_answers(
+                    student_batch["labels"])
+                teacher_answer_index, teacher_answer_size = self.__get_start_and_size_answers(
+                    teacher_batch["labels"])
+
+                # Check for edge cases that could cause NaN
+                if any(size <= 0 for size in student_answer_size) or any(size <= 0 for size in teacher_answer_size):
+                    logging.warning("Found zero or negative answer sizes, skipping batch")
+                    continue
+
+
                 #print("LOGITS")
                 #print(student_logits.size())
                 #print(student_logits)
@@ -132,18 +177,72 @@ class ULD:
                 #print(teacher_logits)
                 
                 # Apply Softmax to get each probabily distribution
-                student_probs = F.softmax(student_logits / temperature, dim=-1)
-                teacher_probs = F.softmax(teacher_logits / temperature, dim=-1)
+                # student_probs = F.softmax(student_logits / temperature, dim=-1)
+                # teacher_probs = F.softmax(teacher_logits / temperature, dim=-1)
                 
-                #max_length = max(max(student_answer_size), max(teacher_answer_size))
-                #print(max_length)
+                # Align answer first token, pad to right and compute softmax
+                for i in range(student_logits.size(0)):
+                    shift = student_answer_index[i]
+                    size = student_answer_size[i]
+                    end_shift = shift+size
+                    
+                    # Skip if size is invalid
+                    if size <= 0 or shift < 0 or end_shift > student_logits.size(1):
+                        logging.warning(f"Invalid indices for student batch {i}: shift={shift}, size={size}, tensor_size={student_logits.size(1)}")
+                        continue
+                        
+                    if student_logits.dim() == 3:
+                        # Add numerical stability by subtracting max before softmax
+                        logits_slice = student_logits[i, shift:end_shift, :]
+                        logits_slice = logits_slice - logits_slice.max(dim=-1, keepdim=True)[0]
+                        student_logits[i] = torch.cat((
+                            torch.nn.functional.softmax(logits_slice/temperature, dim=-1),
+                            torch.zeros_like(student_logits[i, :(student_logits.size(1)-size), :])), dim=0
+                        )
+                    else:
+                        # Handle 2D case (batch_size=1 and batch dim squeezed)
+                        logits_slice = student_logits[shift:end_shift, :]
+                        logits_slice = logits_slice - logits_slice.max(dim=-1, keepdim=True)[0]
+                        student_logits = torch.cat((
+                            torch.nn.functional.softmax(logits_slice/temperature, dim=-1),
+                            torch.zeros_like(student_logits[:(student_logits.size(0)-size), :])), dim=0
+                        ).unsqueeze(0)
+                        break
+                        
+                for i in range(teacher_logits.size(0)):
+                    shift = teacher_answer_index[i]
+                    size = teacher_answer_size[i]
+                    end_shift = shift+size
+                    
+                    # Skip if size is invalid
+                    if size <= 0 or shift < 0 or end_shift > teacher_logits.size(1):
+                        logging.warning(f"Invalid indices for teacher batch {i}: shift={shift}, size={size}, tensor_size={teacher_logits.size(1)}")
+                        continue
+                        
+                    if teacher_logits.dim() == 3:
+                        # Add numerical stability by subtracting max before softmax
+                        logits_slice = teacher_logits[i, shift:end_shift, :]
+                        logits_slice = logits_slice - logits_slice.max(dim=-1, keepdim=True)[0]
+                        teacher_logits[i] = torch.cat((
+                            torch.nn.functional.softmax(logits_slice/temperature, dim=-1),
+                            torch.zeros_like(teacher_logits[i, :(teacher_logits.size(1)-size), :])), dim=0
+                        )
+                    else:
+                        # Handle 2D case (batch_size=1 and batch dim squeezed)
+                        logits_slice = teacher_logits[shift:end_shift, :]
+                        logits_slice = logits_slice - logits_slice.max(dim=-1, keepdim=True)[0]
+                        teacher_logits = torch.cat((
+                            torch.nn.functional.softmax(logits_slice/temperature, dim=-1),
+                            torch.zeros_like(teacher_logits[:(teacher_logits.size(0)-size), :])), dim=0
+                        ).unsqueeze(0)
+                        break
                 
                 # Warning: this is hardcoded!!!
-                target_idx = student_batch["input_ids"].size(1) - student_targets.size(1) - 1 # Consider EOS token too
+                # target_idx = student_batch["input_ids"].size(1) - student_targets.size(1) - 1 # Consider EOS token too
                 
                 #is_value = student_batch["labels"].eq(-100)
                 #target_idx = int(is_value.sum())
-                student_probs = student_probs[:, target_idx:, :]
+                # student_probs = student_probs[:, target_idx:, :]
                 #print(target_idx)
                 #print(student_probs)
                 #break
@@ -162,6 +261,15 @@ class ULD:
                 #print(student_probs)
                 #print(teacher_probs.size())
                 #print(teacher_probs)
+                
+                # Cut to max answer length
+                mex_length = max(max(student_answer_size), max(teacher_answer_size))
+                if mex_length <= 0:
+                    logging.warning("Max answer length is zero or negative, skipping batch")
+                    continue
+                    
+                student_probs = student_logits[:, :mex_length, :]
+                teacher_probs = teacher_logits[:, :mex_length, :]
 
                 
                 # Sort in descending order to align probabilities
@@ -188,16 +296,36 @@ class ULD:
                 distillation_loss = torch.zeros(student_probs.size(0), device=self.device)
                 for i in range(student_probs.size(0)):
                     size = min(student_probs.size(1), teacher_probs.size(1))
+                    if size <= 0:
+                        logging.warning(f"Size is {size}, setting distillation loss to 0 for batch {i}")
+                        distillation_loss[i] = 0.0
+                        continue
                     #print(size)
                     #print(student_logits[i][:size])
                     #print(teacher_logits[i][:size])
                     #print(f"size: {abs(student_logits[i][:size] - teacher_logits[i][:size]).size()}")
                     #print(f"size: {abs(student_logits[i][:size] - teacher_logits[i][:size]).sum(-1).size()}")
                     #print(f"size: {abs(student_logits[i][:size] - teacher_logits[i][:size]).sum(-1).mean(-1).size()}")
-                    distillation_loss[i] = abs(student_probs[i][:size] - teacher_probs[i][:size]).sum(-1).mean(-1)
+                    batch_loss = abs(student_probs[i][:size] - teacher_probs[i][:size]).sum(-1).mean(-1)
+                    # Check for NaN or inf
+                    if torch.isnan(batch_loss) or torch.isinf(batch_loss):
+                        logging.warning(f"NaN or Inf detected in distillation loss for batch {i}, setting to 0")
+                        distillation_loss[i] = 0.0
+                    else:
+                        distillation_loss[i] = batch_loss
                 distillation_loss = distillation_loss.mean()
                 
-                loss = alpha * student_loss + (1-alpha) * distillation_loss
+                # Check if student_loss is NaN
+                if torch.isnan(student_loss) or torch.isinf(student_loss):
+                    logging.warning("NaN or Inf detected in student loss, skipping batch")
+                    continue
+                    
+                # Check if distillation_loss is NaN
+                if torch.isnan(distillation_loss) or torch.isinf(distillation_loss):
+                    logging.warning("NaN or Inf detected in distillation loss, using only student loss")
+                    loss = student_loss
+                else:
+                    loss = alpha * student_loss + (1-alpha) * distillation_loss
                 #loss = student_loss + (alpha * distillation_loss)
                 
                 #print(distillation_loss)
@@ -249,3 +377,22 @@ class ULD:
         # Saving model losses
         with open(losses_path, 'wb') as f:
             pickle.dump(losses, f)
+
+    
+    def __get_start_and_size_answers(self, answer_tensors):
+        answers_index = []
+        answers_size = []
+
+        for answer in answer_tensors:
+            is_value = answer.eq(self.ignore_index)
+            answers_size.append(answer.numel() - int(is_value.sum()))
+            indices = is_value.nonzero(as_tuple=True)[0]
+            if len(indices) == 0 or indices[0] != 0:
+                answers_index.append(0)
+            else:
+                diff_indices = indices[1:] - indices[:-1]
+                break_index = (diff_indices != 1).nonzero()
+                length = (break_index[0].item() +
+                          1) if len(break_index) > 0 else len(indices)
+                answers_index.append(length-1)
+        return answers_index, answers_size

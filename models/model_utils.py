@@ -118,15 +118,34 @@ class GPT2Model(MixinModel):
             self.model.resize_token_embeddings(len(self.tokenizer))
 
     def tokenize_function(self, example):
-        #text = example["prompt"] + "\n" + example["completion"] -> OLD WAY
-        text = [p + c + self.tokenizer.eos_token for p, c in zip(example["prompt"], example["completion"])]
-        input_encodings = self.tokenizer(text, truncation=True) #Maybe dont use truncation
-        target_encodings = self.tokenizer(example["completion"], truncation=True)
+        # Handle both single examples and batched examples
+        if isinstance(example['prompt'], list):
+            # Batched processing
+            results = {"input_ids": [], "attention_mask": [], "labels": []}
+            for prompt, completion in zip(example['prompt'], example['completion']):
+                input_encodings = self.tokenizer.encode(f"{prompt}", truncation=True)
+                target_encodings = self.tokenizer.encode(f" {completion}{self.tokenizer.eos_token}", truncation=True)
+                
+                input_ids = input_encodings + target_encodings
+                labels = [-100] * len(input_encodings) + target_encodings
+                attention_mask = [1] * len(input_ids)
+                
+                results["input_ids"].append(input_ids)
+                results["attention_mask"].append(attention_mask)
+                results["labels"].append(labels)
+            return results
+        else:
+            # Single example processing
+            input_encodings = self.tokenizer.encode(f"{example['prompt']}", truncation=True)
+            target_encodings = self.tokenizer.encode(f" {example['completion']}{self.tokenizer.eos_token}", truncation=True)
 
-        return {"input_ids": input_encodings["input_ids"],
-                "attention_mask": input_encodings["attention_mask"],
-                "targets": target_encodings["input_ids"]} #because its necesary
-        #return example
+            input_ids = input_encodings + target_encodings
+            labels = [-100] * len(input_encodings) + target_encodings  # Mask input tokens for loss calculation
+            attention_mask = [1] * len(input_ids)
+
+            return {"input_ids": input_ids,
+                    "attention_mask": attention_mask,
+                    "labels": labels}
     
     
 class T5Model(MixinModel):
@@ -165,6 +184,8 @@ class PythiaModel(MixinModel):
         self.model = AutoModelForCausalLM.from_pretrained(self.model_path, torch_dtype=torch.bfloat16).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
+        self.task_type = TaskType.CAUSAL_LM
+        self.target_modules = None
         self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
         self.model.config.pad_token_id = self.tokenizer.pad_token_id
 
