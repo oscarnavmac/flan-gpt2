@@ -23,6 +23,7 @@ class ULD:
         self.device = device
         self.student_dataloader, self.teacher_dataloader = self.preprocess(batch_size)
         self.repo_dir = repo_dir
+        self.ignore_index = -100
         
     def preprocess(self, batch_size):
         # Tokenize datasets
@@ -125,6 +126,30 @@ class ULD:
                 student_logits = student_outputs.logits
                 teacher_logits = teacher_outputs.logits
                 
+                # Get answer first token and answer size
+                student_answer_index, student_answer_size = self.__get_start_and_size_answers(
+                    student_batch["labels"])
+                teacher_answer_index, teacher_answer_size = self.__get_start_and_size_answers(
+                    teacher_batch["labels"])
+                
+                # Align answer first token, pad to right and compute softmax
+                for i in range(student_logits.size(0)):
+                    shift = student_answer_index[i]
+                    size = student_answer_size[i]
+                    end_shift = shift+size
+                    student_logits[i] = torch.cat((
+                        torch.nn.functional.softmax(student_logits[i, shift:end_shift, :]/temperature, dim=-1),
+                        torch.zeros_like(student_logits[i, :(student_logits.size(1)-size), :])), dim=0
+                    )
+                for i in range(teacher_logits.size(0)):
+                    shift = teacher_answer_index[i]
+                    size = teacher_answer_size[i]
+                    end_shift = shift+size
+                    teacher_logits[i] = torch.cat((
+                        torch.nn.functional.softmax(teacher_logits[i, shift:end_shift, :]/temperature, dim=-1),
+                        torch.zeros_like(teacher_logits[i, :(teacher_logits.size(1)-size), :])), dim=0
+                    )
+                
                 #print("LOGITS")
                 #print(student_logits.size())
                 #print(student_logits)
@@ -132,18 +157,24 @@ class ULD:
                 #print(teacher_logits)
                 
                 # Apply Softmax to get each probabily distribution
-                student_probs = F.softmax(student_logits / temperature, dim=-1)
-                teacher_probs = F.softmax(teacher_logits / temperature, dim=-1)
+                #student_probs = F.softmax(student_logits / temperature, dim=-1)
+                #teacher_probs = F.softmax(teacher_logits / temperature, dim=-1)
                 
                 #max_length = max(max(student_answer_size), max(teacher_answer_size))
                 #print(max_length)
                 
+                # Cut to max answer length
+                max_length = max(max(student_answer_size), max(teacher_answer_size))
+
+                student_probs = student_logits[:, :max_length, :]
+                teacher_probs = teacher_logits[:, :max_length, :]
+
                 # Warning: this is hardcoded!!!
-                target_idx = student_batch["input_ids"].size(1) - student_targets.size(1) - 1 # Consider EOS token too
+                #target_idx = student_batch["input_ids"].size(1) - student_targets.size(1) - 1 # Consider EOS token too
                 
                 #is_value = student_batch["labels"].eq(-100)
                 #target_idx = int(is_value.sum())
-                student_probs = student_probs[:, target_idx:, :]
+                #student_probs = student_probs[:, target_idx:, :]
                 #print(target_idx)
                 #print(student_probs)
                 #break
@@ -249,3 +280,22 @@ class ULD:
         # Saving model losses
         with open(losses_path, 'wb') as f:
             pickle.dump(losses, f)
+            
+            
+    def __get_start_and_size_answers(self, answer_tensors):
+        answers_index = []
+        answers_size = []
+
+        for answer in answer_tensors:
+            is_value = answer.eq(self.ignore_index)
+            answers_size.append(answer.numel() - int(is_value.sum()))
+            indices = is_value.nonzero(as_tuple=True)[0]
+            if len(indices) == 0 or indices[0] != 0:
+                answers_index.append(0)
+            else:
+                diff_indices = indices[1:] - indices[:-1]
+                break_index = (diff_indices != 1).nonzero()
+                length = (break_index[0].item() +
+                          1) if len(break_index) > 0 else len(indices)
+                answers_index.append(length-1)
+        return answers_index, answers_size
