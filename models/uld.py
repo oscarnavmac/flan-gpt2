@@ -128,7 +128,7 @@ class ULD:
                 
                 # Get answer first token and answer size
                 student_answer_index, student_answer_size = self.__get_start_and_size_answers(
-                    student_batch["labels"])
+                    student_targets)
                 teacher_answer_index, teacher_answer_size = self.__get_start_and_size_answers(
                     teacher_batch["labels"])
                 
