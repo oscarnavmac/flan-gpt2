@@ -126,7 +126,6 @@ class GPT2Model(MixinModel):
         return {"input_ids": input_encodings["input_ids"],
                 "attention_mask": input_encodings["attention_mask"],
                 "targets": target_encodings["input_ids"]}
-        #return example
     
     
 class T5Model(MixinModel):
@@ -162,11 +161,15 @@ class PythiaModel(MixinModel):
     """
     def __init__(self, checkpoint, device, peft=False):
         super().__init__(checkpoint, device, peft)
-        self.model = AutoModelForCausalLM.from_pretrained(self.model_path, torch_dtype=torch.bfloat16).to(device)
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_path).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
-        self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
-        self.model.config.pad_token_id = self.tokenizer.pad_token_id
+        self.task_type = TaskType.CAUSAL_LM
+        self.target_modules = ["query_key_value"]
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
+            self.model.config.pad_token_id = self.tokenizer.pad_token_id
+            self.model.resize_token_embeddings(len(self.tokenizer))
 
     def tokenize_function(self, example):
         text = [p + c + self.tokenizer.eos_token for p, c in zip(example["prompt"], example["completion"])]
@@ -185,9 +188,11 @@ class SmolLMModel(MixinModel):
     """
     def __init__(self, checkpoint, device, peft=False):
         super().__init__(checkpoint, device, peft)
-        self.model = AutoModelForCausalLM.from_pretrained(self.model_path, torch_dtype=torch.bfloat16).to(device)
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_path).to(device)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, clean_up_tokenization_spaces=True)
         self.data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
+        self.task_type = TaskType.CAUSAL_LM
+        self.target_modules = ["q_proj", "v_proj"]
         if self.tokenizer.pad_token is None:
             self.tokenizer.add_special_tokens({"pad_token": "<pad>"})
             self.model.config.pad_token_id = self.tokenizer.pad_token_id
