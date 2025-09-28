@@ -23,6 +23,8 @@ parser.add_argument("-n", "--num_samples", type=int, default=10000,
                     help="Number of samples to train on")
 parser.add_argument("--num_epochs", type=int, default=1,
                     help="Number of epochs to train for")
+parser.add_argument("--batch_size", type=int, default=4,
+                    help="Batch size for training")
 parser.add_argument("--save_model", action="store_true",
                     help="Whether to save the model")
 parser.add_argument("--push_to_hub", action="store_true",
@@ -93,12 +95,12 @@ if args.distill:
     
     print("Training using Knowledge Distillation!")
     print("Teacher Model: ", checkpoint)
-    uld = ULD(model, teacher_model, dataset, repo_name, device)
+    uld = ULD(model, teacher_model, dataset, repo_name, device, batch_size=args.batch_size)
     uld.train(alpha=0.5, temperature=1, num_epochs=args.num_epochs, peft=args.lora,
               lora_params=lora_params, save_model=args.save_model, push_to_hub=args.push_to_hub)
 else:
     print("Training WITHOUT distillation, vanilla fine-tuning instead!")
-    vanilla_ft = VanillaFT(model, dataset, repo_name, device)
+    vanilla_ft = VanillaFT(model, dataset, repo_name, device, batch_size=args.batch_size)
     vanilla_ft.train(num_epochs=args.num_epochs, peft=args.lora, 
                      lora_params=lora_params, save_model=args.save_model, push_to_hub=args.push_to_hub)
 

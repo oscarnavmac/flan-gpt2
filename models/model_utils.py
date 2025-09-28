@@ -120,8 +120,8 @@ class GPT2Model(MixinModel):
     def tokenize_function(self, example):
         #text = example["prompt"] + "\n" + example["completion"] -> OLD WAY
         text = [p + c + self.tokenizer.eos_token for p, c in zip(example["prompt"], example["completion"])]
-        input_encodings = self.tokenizer(text, truncation=True) #Maybe dont use truncation
-        target_encodings = self.tokenizer(example["completion"], truncation=True)
+        input_encodings = self.tokenizer(text, truncation=True, padding=True)
+        target_encodings = self.tokenizer(example["completion"], truncation=True, padding=True)
 
         return {"input_ids": input_encodings["input_ids"],
                 "attention_mask": input_encodings["attention_mask"],
@@ -147,8 +147,8 @@ class T5Model(MixinModel):
         self.data_collator = DataCollatorForSeq2Seq(self.tokenizer)
 
     def tokenize_function(self, example):
-        input_encodings = self.tokenizer(example["prompt"], truncation=True)
-        target_encodings = self.tokenizer(text_target=example["completion"], truncation=True)
+        input_encodings = self.tokenizer(example["prompt"], truncation=True, padding=True)
+        target_encodings = self.tokenizer(text_target=example["completion"], truncation=True, padding=True)
 
         return {"input_ids": input_encodings["input_ids"],
                 "attention_mask": input_encodings["attention_mask"],
@@ -173,8 +173,8 @@ class PythiaModel(MixinModel):
 
     def tokenize_function(self, example):
         text = [p + c + self.tokenizer.eos_token for p, c in zip(example["prompt"], example["completion"])]
-        input_encodings = self.tokenizer(text, truncation=True)
-        target_encodings = self.tokenizer(example["completion"], truncation=True)
+        input_encodings = self.tokenizer(text, truncation=True, padding=True)
+        target_encodings = self.tokenizer(example["completion"], truncation=True, padding=True)
 
         return {"input_ids": input_encodings["input_ids"],
                 "attention_mask": input_encodings["attention_mask"],
@@ -200,8 +200,8 @@ class SmolLMModel(MixinModel):
 
     def tokenize_function(self, example):
         text = [p + c + self.tokenizer.eos_token for p, c in zip(example["prompt"], example["completion"])]
-        input_encodings = self.tokenizer(text, truncation=True)
-        target_encodings = self.tokenizer(example["completion"], truncation=True)
+        input_encodings = self.tokenizer(text, truncation=True, padding=True)
+        target_encodings = self.tokenizer(example["completion"], truncation=True, padding=True)
 
         return {"input_ids": input_encodings["input_ids"],
                 "attention_mask": input_encodings["attention_mask"],

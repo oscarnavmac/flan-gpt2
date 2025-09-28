@@ -10,22 +10,19 @@ import pickle
 from models.model_utils import MixinModel
 import os
 
-#checkpoint = 'openai-community/gpt2-medium'
-#teacher_name = 'google/flan-t5-large'
-#repo_name = "flan-gpt2-medium-distill_V3"
-
 class ULD:
-    def __init__(self, wrapped_student, wrapped_teacher, dataset, repo_name, device, repo_dir="output", batch_size=1):
+    def __init__(self, wrapped_student, wrapped_teacher, dataset, repo_name, device, repo_dir="output", batch_size=4):
         self.wrapped_student: MixinModel = wrapped_student
         self.wrapped_teacher: MixinModel = wrapped_teacher
         self.dataset = dataset
         self.repo_name = repo_name
         self.device = device
-        self.student_dataloader, self.teacher_dataloader = self.preprocess(batch_size)
+        self.batch_size = batch_size
+        self.student_dataloader, self.teacher_dataloader = self.preprocess()
         self.repo_dir = repo_dir
         self.ignore_index = -100
         
-    def preprocess(self, batch_size):
+    def preprocess(self):
         # Tokenize datasets
         tokenized_teacher_dataset = self.dataset.map(
             self.wrapped_teacher.tokenize_function,
@@ -46,11 +43,11 @@ class ULD:
 
         # Get Training DataLoader
         train_teacher_dataloader = DataLoader(
-            tokenized_teacher_dataset, shuffle=False, batch_size=batch_size, 
+            tokenized_teacher_dataset, shuffle=False, batch_size=self.batch_size, 
             collate_fn=self.wrapped_teacher.get_collator()
         )
         train_student_dataloader = DataLoader(
-            tokenized_student_dataset, shuffle=False, batch_size=batch_size, 
+            tokenized_student_dataset, shuffle=False, batch_size=self.batch_size, 
             collate_fn=self.wrapped_student.get_collator()
         )
         
@@ -90,7 +87,9 @@ class ULD:
         repo_path = os.path.join(self.repo_dir, self.repo_name)
         os.makedirs(repo_path, exist_ok=True)
         
-        logging.info(f"lr: {scheduler.get_lr()}, gradient_accumulation_steps: {gradient_accumulation_steps}")
+        logging.info(f"Batch size: {self.batch_size}, gradient_accumulation_steps: {gradient_accumulation_steps}")
+        logging.info(f"Total effective batch size: {self.batch_size * gradient_accumulation_steps}")
+        logging.info(f"lr: {scheduler.get_lr()}")
         logging.info(f"Training {self.repo_name} for {num_epochs} epochs with {num_training_steps} steps")
         if torch.cuda.is_available():
             logging.info(f"GPU Memory Usage: {torch.cuda.memory_allocated() / 1e9} GB")
