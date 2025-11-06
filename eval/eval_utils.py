@@ -29,7 +29,7 @@ class Evaluation:
         
         self.model.eval()
 
-    def generate(self, prompts_list, return_full_text=True, max_tokens=200):
+    def generate(self, prompts_list, return_full_text=True, max_tokens=200, set_low_temp=False):
         outputs = []
         for input in tqdm(prompts_list, desc="Generating responses... "):
             #input += " ### Response: "
@@ -42,7 +42,8 @@ class Evaluation:
                         eos_token_id=self.tokenizer.eos_token_id,
                         pad_token_id=self.tokenizer.pad_token_id,
                         max_new_tokens=max_tokens,
-                        do_sample=True
+                        do_sample=True,
+                        temperature=10e-5 if set_low_temp else 1.0,
                     )[0],
                     skip_special_tokens=True
                 )
@@ -106,8 +107,8 @@ class Evaluation:
             options = dataset["options"]
             predictions = self.rank_classification(prompts_list=prompts_list, options_list=options)
         else:
-            references = dataset["completion"][n_shot:]
-            predictions = self.generate(prompts_list, return_full_text=return_full_text, max_tokens=max_tokens)
+            references = dataset["concepts"][n_shot:] if dataset_name == "common_gen" else dataset["completion"][n_shot:]
+            predictions = self.generate(prompts_list, return_full_text=return_full_text, max_tokens=max_tokens, set_low_temp=True)
             
         if verbose:
             print("References:")
@@ -135,7 +136,7 @@ class Evaluation:
                             batched=False,
                             fn_kwargs={"patterns_list": patterns})
         
-        references = dataset["completion"]
+        references = dataset["concepts"] if dataset_name == "common_gen" else dataset["completion"]
         prompts_list = dataset["prompt"]
         predictions = self.generate(prompts_list, return_full_text)
         metric_fn = METRIC[dataset_name]

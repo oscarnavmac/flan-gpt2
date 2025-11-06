@@ -16,6 +16,8 @@ parser.add_argument("-m", "--model", type=str, default="gpt", const="gpt",
                     help="Model architecture to use for evaluation")
 parser.add_argument("-c", "--checkpoint", type=str, default="openai-community/gpt2-medium",
                     help="Checkpoint to use for evaluation")
+parser.add_argument("--peft", action="store_true",
+                    help="Whether the model uses PEFT (e.g., LoRA)")
 parser.add_argument("-n", "--num_samples", type=int, default=10000,
                     help="Number of samples to evaluate on")
 parser.add_argument("--n_shot", type=int, default=0,
@@ -49,25 +51,25 @@ datasets_names = ["common_gen", "anli", "bool_q", "xsum",
 # Load model
 if args.model == "gpt":
     try:
-        model = GPT2Model(args.checkpoint, device)
+        model = GPT2Model(args.checkpoint, device, peft=args.peft)
         return_full_text = False
     except:
         raise ValueError("Invalid checkpoint for GPT-2 model")
 elif args.model == "t5":
     try:
-        model = T5Model(args.checkpoint, device)
+        model = T5Model(args.checkpoint, device, quantization=True)
         return_full_text = True
     except:
         raise ValueError("Invalid checkpoint for T5 model")
 elif args.model == "pythia":
     try:
-        model = PythiaModel(args.checkpoint, device)
+        model = PythiaModel(args.checkpoint, device, peft=args.peft)
         return_full_text = False
     except:
         raise ValueError("Invalid checkpoint for Pythia model")
 elif args.model == "smol":
     try:
-        model = SmolLMModel(args.checkpoint, device)
+        model = SmolLMModel(args.checkpoint, device, peft=args.peft)
         return_full_text = False
     except:
         raise ValueError("Invalid checkpoint for SmolLM model")
@@ -79,13 +81,13 @@ os.makedirs(args.save_dir, exist_ok=True)
 save_path = f"{args.save_dir}/{model_name}_{args.n_shot}-shot_{total_num_samples}_{eval_split}.csv"
 
 # Load evaluation class
-eval = Evaluation(model.get_model(), model.get_tokenizer(), device)
+eval = Evaluation(model.get_model(peft=args.peft), model.get_tokenizer(), device)
 
 # Evaluate each task
 for dataset_name in datasets_names:
     print(f"Evaluating {dataset_name}...")
     # Load dataset
-    dataset = create_instruct_dataset(args.num_samples, [dataset_name])
+    # dataset = create_instruct_dataset(args.num_samples, [dataset_name])
         
     try:
          result = eval.evaluate(dataset_name, args.num_samples, n_shot=args.n_shot,
