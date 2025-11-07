@@ -55,24 +55,40 @@ class Evaluation:
         return outputs
     
     def rank_classification(self, prompts_list, options_list):
-        """" Rank Classification """
+        """Rank Classification: select the option with highest conditional log-likelihood."""
         outputs = []
-        for prompt, options in tqdm(zip(prompts_list, options_list),
-                                    desc="Generating predictions... ",
-                                    total=len(prompts_list)):
-            choice_probs = []
-            for completion in options:
-                inputs = self.tokenizer(prompt + completion, return_tensors='pt').to(self.device)
+
+        for prompt, options in tqdm(
+            zip(prompts_list, options_list),
+            desc="Generating predictions... ",
+            total=len(prompts_list)
+        ):
+            choice_scores = []
+            for option in options:
+                # Tokenize prompt and option separately
+                inputs = self.tokenizer(prompt, option, return_tensors='pt').to(self.device)
+                input_ids = inputs["input_ids"]
+                attention_mask = inputs["attention_mask"]
+
+                # Mask prompt tokens so that only the option contributes to loss
+                # tokenizer(prompt, option) returns tokens like [BOS] prompt tokens + option tokens
                 with torch.no_grad():
-                    output = self.model(**inputs, labels=inputs["input_ids"])
-                    # Get the negative log-likelihood as a score for this choice
-                    choice_prob = -output.loss.item()
-                choice_probs.append(choice_prob)
-            # Select the choice with the highest probability
-            predicted_answer = torch.argmax(torch.tensor(choice_probs)).item()
-            outputs.append(predicted_answer)
-            
+                    labels = input_ids.clone()
+                    prompt_len = self.tokenizer(prompt, return_tensors='pt')["input_ids"].size(1)
+                    labels[:, :prompt_len] = -100  # ignore prompt in loss computation
+
+                    output = self.model(input_ids=input_ids,
+                                        attention_mask=attention_mask,
+                                        labels=labels)
+                    choice_score = -output.loss.item()  # higher = better
+
+                choice_scores.append(choice_score)
+
+            best_idx = max(range(len(choice_scores)), key=lambda i: choice_scores[i])
+            outputs.append(best_idx)
+
         return outputs
+
     
     def build_prompt_list(self, dataset, n_shot=0):
         """ Build the prompt list for the model using first n_shot examples of the dataset """
