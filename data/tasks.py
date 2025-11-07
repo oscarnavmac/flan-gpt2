@@ -169,7 +169,7 @@ _COSMOSQA_MAX_LEN = 2000
 
 def _process_bool_q(example):
     example["options"] = ["True", "False"]
-    example["label"] = int(example["answer"])
+    example["label"] = int(not example["answer"]) # invert label to match options
     
     return example
 
