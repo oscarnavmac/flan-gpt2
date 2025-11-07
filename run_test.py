@@ -90,23 +90,23 @@ for dataset_name in datasets_names:
     # dataset = create_instruct_dataset(args.num_samples, [dataset_name])
         
     try:
-         result = eval.evaluate(dataset_name, args.num_samples, n_shot=args.n_shot,
+         results = eval.evaluate(dataset_name, args.num_samples, n_shot=args.n_shot,
                                 training_set=args.train_set, return_full_text=return_full_text,
                                 verbose=True)
     except Exception as e:
         print(f"Error evaluating {dataset_name}: {e}")
         continue
     
-    print(f"Results for {dataset_name}: {result}")
     # Save results
     if not args.no_save_results:
         # append results to CSV file
-        header = ["dataset", "score"]
+        header = ["dataset", "metric", "score"]
         with open(save_path, mode="a", newline="") as f:
             writer = csv.writer(f)
             if f.tell() == 0:
                 writer.writerow(header)
-            writer.writerow([dataset_name, result])
+            for metric_name, score in results.items():
+                writer.writerow([dataset_name, metric_name, score])
         print(f"Results saved to {save_path}")
                 
 # Example usage:
