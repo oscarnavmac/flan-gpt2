@@ -78,17 +78,18 @@ def code_bertscore(references, predictions, code_lang):
 rouge1 = partial(rouge, rouge_type="rouge1")
 rougeLsum = partial(rouge, rouge_type="rougeLsum")
 bertscore_spanish = partial(bertscore, language="es")
+bertscore_english = partial(bertscore, language="en")
 code_bertscore_python = partial(code_bertscore, code_lang="python")
 code_bleu_python = partial(code_bleu, code_lang="python")
     
 METRIC = {
     'anli': accuracy,
-    'common_gen': coverage,
+    'common_gen': coverage, # rougeLsum,
     'squad': rougeLsum, #squad - qa metrics
     'cosmos_qa': accuracy,
-    'coqa': rougeLsum, #squad - qa metrics
+    'coqa': rougeLsum, #squad - qa metrics (REMOVE?)
     'python_code': code_bertscore_python, # code_bleu_python
-    'xsum': rougeLsum,
+    'xsum': rougeLsum, # bertscore_english,
     'bool_q': accuracy,
     'eng_spa': bertscore_spanish, # sacrebleu,
     'paws': accuracy,
