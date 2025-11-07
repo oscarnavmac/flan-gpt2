@@ -1,4 +1,5 @@
 import evaluate
+import code_bert_score
 from functools import partial
 import spacy
 
@@ -26,7 +27,6 @@ def bertscore(references, predictions):
     )
     return {"score": sum(results["f1"]) / len(results["f1"])}
 
-
 def squad(references, predictions):
     squad_metric = evaluate.load("squad")
     return squad_metric.compute(predictions=predictions, references=references)
@@ -46,7 +46,27 @@ def coverage(concepts, predictions):
         covered = sum(1 for c in concept_list if c.lower() in pred_lemmas)
         scores.append(covered / len(concept_list))
     return {"score": sum(scores) / len(scores)}
-    
+
+def code_bleu(references, predictions):
+    """
+    Compute CodeBLEU metric for code generation tasks.
+    CodeBLEU combines BLEU with syntactic information for better code evaluation.
+    """
+        
+    code_metric = evaluate.load("k4black/codebleu")
+
+    results = code_metric.compute(references=references, predictions=predictions, lang=["python"])
+    # return {"score": result['codebleu']}
+    return {"score": results["codebleu"]}
+
+def code_bert_score(references, predictions):
+    """
+    Compute CodeBERTScore metric for code generation tasks.
+    CodeBERTScore uses pre-trained CodeBERT embeddings to evaluate code similarity.
+    """
+    results = code_bert_score.score(cands=predictions, refs=references, lang='python')
+    return {"score": results[0][0].item()} # Return Precision
+
 rouge1 = partial(rouge, rouge_type="rouge1")
 rougeLsum = partial(rouge, rouge_type="rougeLsum")
     
@@ -56,7 +76,7 @@ METRIC = {
     'squad': rougeLsum, #squad - qa metrics
     'cosmos_qa': accuracy,
     'coqa': rougeLsum, #squad - qa metrics
-    'python_code': sacrebleu,
+    'python_code': code_bleu,
     'xsum': rougeLsum,
     'bool_q': accuracy,
     'eng_spa': bertscore, #sacrebleu,
