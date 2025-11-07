@@ -68,6 +68,19 @@ PATTERNS = {
         ("Identify the most salient words in this sentence:\n\n{target}", "{concepts}"),
         ("Generate a sentence, and then tell me the concepts included in that sentence.", "Sentence:\n{target}\n\nConcepts:\n{concepts}"),
     ],
+    
+    "samsum": [
+        ("{dialogue}\n\nBriefly summarize that dialogue.", "{summary}"),
+        ("Here is a dialogue:\n{dialogue}\n\nWrite a short summary!", "{summary}"),
+        ("Dialogue:\n{dialogue}\n\nWhat is a summary of this dialogue?", "{summary}"),
+        ("{dialogue}\n\nWhat was that dialogue about, in two sentences or less?", "{summary}"),
+        ("Here is a dialogue:\n{dialogue}\n\nWhat were they talking about?", "{summary}"),
+        ("Dialogue:\n{dialogue}\nWhat were the main points in that conversation?", "{summary}"),
+        ("Dialogue:\n{dialogue}\nWhat was going on in that conversation?", "{summary}"),
+        ("Write a dialog about anything you want", "{dialogue}"),
+        ("Write a dialog based on this summary:\n{summary}.", "{dialogue}"),
+        ("Write a dialog with this premise \"{summary}\".", "{dialogue}"),
+    ],
 
     "xsum": [
         ("Summarize:\n\n{document}", "{summary}"),

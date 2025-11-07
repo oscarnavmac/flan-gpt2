@@ -142,12 +142,26 @@ def _load_python_code(train=False):
     return dataset
 
 
-# =================================== copa =====================================
-#NOT FOUND
+# =================================== samsum =====================================
+_repo_samsum = "knkarthick/samsum"
+_SAMSUM_MAX_LEN = 1200
+
+def _process_samsum(example):
+    pass
+
+def _load_samsum(train=False):
+    if train:
+        dataset = load_dataset(_repo_samsum, split='train')
+    else:
+        dataset = load_dataset(_repo_samsum, split='validation')
+    #dataset = dataset.map(_process_samsum, keep_in_memory=True)
+    dataset = dataset.filter(lambda example: len(example["dialogue"]) <= _SAMSUM_MAX_LEN, keep_in_memory=True)
+    
+    return dataset
 
 # ============================== xsum ==========================================
 _repo_xsum = "EdinburghNLP/xsum"
-_XSUM_MAX_LEN = 2800
+_XSUM_MAX_LEN = 2800 # 1500
 
 def _process_xsum(example):
     pass
@@ -268,6 +282,7 @@ LOADERS = {
     'squad': _load_squad,
     'cosmos_qa': _load_cosmos_qa,
     'coqa': _load_coqa,
+    'samsum': _load_samsum,
     'python_code': _load_python_code,
     'xsum': _load_xsum,
     'bool_q': _load_bool_q,
