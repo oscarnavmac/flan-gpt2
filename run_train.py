@@ -45,7 +45,7 @@ args = parser.parse_args()
 
 # Load instruct dataset (12 tasks) 
 datasets_names = ["common_gen", "anli", "bool_q", "xsum", 
-                  "python_code", "cosmos_qa", "squad", "coqa", 
+                  "python_code", "cosmos_qa", "squad", "samsum", 
                   "eng_spa", "paws"]#, "quora", "alpaca"]
 dataset = create_instruct_dataset(args.num_samples, datasets_names)
 

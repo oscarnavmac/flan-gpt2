@@ -10,17 +10,18 @@ clean_code = lambda text: re.sub(r"^```[\w]*\n|```$", "", text, flags=re.MULTILI
 """High level implementation of each evaluation metric"""
 
 def accuracy(references, predictions):
-    """Compute accuracy metric"""
+    """Compute accuracy metric for classification tasks."""
     acc_metric = evaluate.load("accuracy")
     return acc_metric.compute(references=references, predictions=predictions)
 
 def sacrebleu(references, predictions):
-    """Compute SacreBLEU metric"""
+    """Compute SacreBLEU metric for translation tasks."""
     bleu_metric = evaluate.load("sacrebleu")
     score = bleu_metric.compute(references=references, predictions=predictions)["score"] / 100
     return {"score": score}
 
 def bertscore(references, predictions, language):
+    """Compute BERTScore metric for text generation tasks."""
     bert_metric = evaluate.load("bertscore")
     results = bert_metric.compute(
         predictions=predictions,
@@ -30,10 +31,12 @@ def bertscore(references, predictions, language):
     return {"score": sum(results["f1"]) / len(results["f1"])}
 
 def squad(references, predictions):
+    """Compute SQuAD metric for question answering tasks."""
     squad_metric = evaluate.load("squad")
     return squad_metric.compute(predictions=predictions, references=references)
 
 def rouge(references, predictions, rouge_type):
+    """Compute ROUGE metric for text summarization tasks."""
     rouge_metric = evaluate.load('rouge')
     return rouge_metric.compute(predictions=predictions,
                   references=references,
@@ -85,9 +88,9 @@ code_bleu_python = partial(code_bleu, code_lang="python")
 METRIC = {
     'anli': accuracy,
     'common_gen': coverage, # rougeLsum,
-    'squad': rougeLsum, #squad - qa metrics
+    'squad': rougeLsum, # squad,
     'cosmos_qa': accuracy,
-    'coqa': rougeLsum, #squad - qa metrics (REMOVE?)
+    'samsum': rougeLsum, # bertscore_english,
     'python_code': code_bertscore_python, # code_bleu_python
     'xsum': rougeLsum, # bertscore_english,
     'bool_q': accuracy,

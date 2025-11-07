@@ -45,7 +45,7 @@ else:
 
 # Load instruct dataset (10 tasks)
 datasets_names = ["common_gen", "anli", "bool_q", "xsum", 
-                  "python_code", "cosmos_qa", "squad", "coqa", 
+                  "python_code", "cosmos_qa", "squad", "samsum", 
                   "eng_spa", "paws"]
 
 # Load model
