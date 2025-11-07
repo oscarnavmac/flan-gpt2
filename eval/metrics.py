@@ -2,8 +2,10 @@ import evaluate
 import code_bert_score
 from functools import partial
 import spacy
+import re
 
 nlp = spacy.load("en_core_web_sm")
+clean_code = lambda text: re.sub(r"^```[\w]*\n|```$", "", text, flags=re.MULTILINE).strip()
 
 """High level implementation of each evaluation metric"""
 
@@ -18,12 +20,12 @@ def sacrebleu(references, predictions):
     score = bleu_metric.compute(references=references, predictions=predictions)["score"] / 100
     return {"score": score}
 
-def bertscore(references, predictions):
+def bertscore(references, predictions, language):
     bert_metric = evaluate.load("bertscore")
     results = bert_metric.compute(
         predictions=predictions,
         references=references,
-        lang="es"
+        lang=language
     )
     return {"score": sum(results["f1"]) / len(results["f1"])}
 
@@ -47,7 +49,7 @@ def coverage(concepts, predictions):
         scores.append(covered / len(concept_list))
     return {"score": sum(scores) / len(scores)}
 
-def code_bleu(references, predictions):
+def code_bleu(references, predictions, code_lang):
     """
     Compute CodeBLEU metric for code generation tasks.
     CodeBLEU combines BLEU with syntactic information for better code evaluation.
@@ -55,20 +57,29 @@ def code_bleu(references, predictions):
         
     code_metric = evaluate.load("k4black/codebleu")
 
-    results = code_metric.compute(references=references, predictions=predictions, lang=["python"])
-    # return {"score": result['codebleu']}
+    results = code_metric.compute(
+        references=[clean_code(ref) for ref in references], 
+        predictions=[clean_code(pred) for pred in predictions], 
+        lang=[code_lang]
+    )
     return {"score": results["codebleu"]}
 
-def code_bert_score(references, predictions):
+def code_bertscore(references, predictions, code_lang):
     """
     Compute CodeBERTScore metric for code generation tasks.
     CodeBERTScore uses pre-trained CodeBERT embeddings to evaluate code similarity.
     """
-    results = code_bert_score.score(cands=predictions, refs=references, lang='python')
-    return {"score": results[0][0].item()} # Return Precision
+    results = code_bert_score.score(
+        cands=[clean_code(pred) for pred in predictions], 
+        refs=[clean_code(ref) for ref in references], 
+        lang=code_lang)
+    return {"score": results[0][0].item()} # Return Precision only
 
 rouge1 = partial(rouge, rouge_type="rouge1")
 rougeLsum = partial(rouge, rouge_type="rougeLsum")
+bertscore_spanish = partial(bertscore, language="es")
+code_bertscore_python = partial(code_bertscore, code_lang="python")
+code_bleu_python = partial(code_bleu, code_lang="python")
     
 METRIC = {
     'anli': accuracy,
@@ -76,10 +87,10 @@ METRIC = {
     'squad': rougeLsum, #squad - qa metrics
     'cosmos_qa': accuracy,
     'coqa': rougeLsum, #squad - qa metrics
-    'python_code': code_bleu,
+    'python_code': code_bertscore_python, # code_bleu_python
     'xsum': rougeLsum,
     'bool_q': accuracy,
-    'eng_spa': bertscore, #sacrebleu,
+    'eng_spa': bertscore_spanish, # sacrebleu,
     'paws': accuracy,
     'quora': rougeLsum,
     'alpaca': rougeLsum
