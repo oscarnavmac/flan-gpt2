@@ -35,7 +35,7 @@ def squad(references, predictions):
     """Compute SQuAD metric for question answering tasks."""
     squad_metric = evaluate.load("squad")
     results = squad_metric.compute(predictions=predictions, references=references)
-    return {"score": results["f1"]}
+    return {"score": results["f1"] / 100}
 
 def rougeL(references, predictions):
     """Compute ROUGE metric for text summarization tasks."""

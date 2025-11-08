@@ -28,7 +28,7 @@ class Evaluation:
         
         self.model.eval()
 
-    def generate(self, prompts_list, return_full_text=True, max_tokens=200, set_low_temp=False):
+    def generate(self, prompts_list, return_full_text=True, max_tokens=200, temperature=1.0):
         outputs = []
         for input in tqdm(prompts_list, desc="Generating responses... "):
             #input += " ### Response: "
@@ -42,7 +42,7 @@ class Evaluation:
                         pad_token_id=self.tokenizer.pad_token_id,
                         max_new_tokens=max_tokens,
                         do_sample=True,
-                        temperature=10e-5 if set_low_temp else 1.0,
+                        temperature=temperature,
                     )[0],
                     skip_special_tokens=True
                 )
@@ -101,7 +101,7 @@ class Evaluation:
         return prompt_list
 
     def evaluate(self, dataset_name, num_samples=None, n_shot=0, training_set=False, return_full_text=True, 
-                 max_tokens=200, verbose=False) -> dict[str, float]:
+                 max_tokens=200, temperature=1.0, shuffle=False, verbose=False) -> dict[str, float]:
         """ Evaluate a dataset with the model """
         loaded = TaskConfigs.load_task(dataset_name, training_set).filter(
             lambda example, idx: idx < num_samples, with_indices=True)
@@ -111,6 +111,8 @@ class Evaluation:
                             #load_from_cache_file=False,
                             batched=False,
                             fn_kwargs={"patterns_list": patterns})
+        if shuffle:
+            dataset = dataset.shuffle(seed=42)
         prompts_list = self.build_prompt_list(dataset, n_shot=n_shot)
         if verbose:
             print("Prompts:")
@@ -124,7 +126,8 @@ class Evaluation:
             predictions = self.rank_classification(prompts_list=prompts_list, options_list=options)
         else:
             references = dataset["completion"][n_shot:]
-            predictions = self.generate(prompts_list, return_full_text=return_full_text, max_tokens=max_tokens, set_low_temp=True)
+            predictions = self.generate(prompts_list, return_full_text=return_full_text, 
+                                        max_tokens=max_tokens, temperature=temperature)
             
         if verbose:
             print("References:")
