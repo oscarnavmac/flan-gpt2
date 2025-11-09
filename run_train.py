@@ -96,7 +96,7 @@ if args.distill:
     print("Training using Knowledge Distillation!")
     print("Teacher Model: ", checkpoint)
     uld = ULD(model, teacher_model, dataset, repo_name, device, batch_size=args.batch_size)
-    uld.train(alpha=0.5, temperature=1, num_epochs=args.num_epochs, peft=args.lora,
+    uld.train(alpha=0.5, temperature=1.2, num_epochs=args.num_epochs, peft=args.lora,
               lora_params=lora_params, save_model=args.save_model, push_to_hub=args.push_to_hub)
 else:
     print("Training WITHOUT distillation, vanilla fine-tuning instead!")
