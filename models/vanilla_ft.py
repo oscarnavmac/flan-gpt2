@@ -40,7 +40,7 @@ class VanillaFT:
         self.wrapped_model.get_tokenizer().save_pretrained(path)
 
     def train(self, num_epochs=1, peft=False, lora_params=None, save_model=True, push_to_hub=True,
-            logging_steps=100, save_steps=1000000, gradient_accumulation_steps=4, max_steps=None):
+            logging_steps=100, save_steps=1000000, gradient_accumulation_steps=16, max_steps=None):
 
         model = self.wrapped_model.get_model(peft=peft, lora_params=lora_params)
         if peft:
