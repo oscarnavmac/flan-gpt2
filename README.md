@@ -1,15 +1,21 @@
-# Distilling GPT-2 on Multi-Task Instructions
+# Transferring In-Context Learning Capabilities via Knowledge Distillation
+### Sub-billion Language Models distilled from FLAN-T5-XL using Universal Logit Distillation (ULD)
 
-In this project, we combine Kowledge Distillation (KD) alongside with instruction-tuning for training smaller language models (such as GPT-2) to follow natural multi-task prompts. We argue that models with less than a billion parameters are also capable to understand natural language prompts and generalize across 10 different tasks.
+This repository contains the code and experimental pipeline developed for my Master’s thesis, *Transferring In-Context Learning Capabilities via Knowledge Distillation in Language Models*.  
+The goal is to study whether **decoder-only models below 1B parameters** can acquire **instruction-following**, **generalization**, and **in-context learning (ICL)** abilities when distilled from a larger **encoder–decoder teacher**.
 
-We cannot distill GPT-2 using FLAN-T5 as a teacher via KL-divergence (for example) because they have different tokenizer and vocabulary. Instead, we implemented [Universal Logit Distillation](https://arxiv.org/abs/2402.12030).
+
+Traditional KL-based distillation requires matching teacher/student vocabularies—impossible when distilling T5 → GPT-2/Pythia/SmolLM. Instead, we implemented [Universal Logit Distillation](https://arxiv.org/abs/2402.12030). **ULD solves this by aligning *rank-ordered* logits, not token IDs.**  
+Thus T5 logits can supervise any autoregressive model regardless of tokenizer size or vocabulary.
 
 Our method demonstrated better performance compared with vanilla fine-tuning.
 
 <figure>
-<img src="./images/test_eval.png" width="400" />
-<figcaption><i>Performance on our evaluation benchmark. The GPT-2 KD model shows better generalization than the FT version.</i></figcaption>
+<img src="./images/overview.png" width="400" />
+<figcaption><i></i></figcaption>
 </figure>
+
+---
 
 ## Tasks collection
 
@@ -20,9 +26,27 @@ For the training data, we used a custom subset of the Muffin collection (i.e. [F
 <figcaption><i>Tasks collection used to finetune/distill GPT-2.</i></figcaption>
 </figure>
 
-## Results
+---
 
-For now, we only focus on benchmarking with train dataset and comparing with teacher's family models.
+## Training Details
+
+- **Teacher**: FLAN-T5-XL (3B)  
+- **Students**: GPT-2-Med, Pythia-410M, SmolLM-360M  
+- **Loss**: CE + λ·ULD  
+- **λ = 0.5**, **T = 1.2**  
+- **LoRA r=16** adapters  
+- **4-bit NF4 quantization** (for teacher inference)
+
+
+<figure>
+<img src="./images/losses.png" width="400" />
+<figcaption><i></i></figcaption>
+</figure>
+
+---
+
+## 8-Benchmark (in-domain)
+Across eight tasks seen by the teacher, **ULD improves accuracy, ROUGE, BERTScore, and Coverage across all student families**, often narrowing the gap with the teacher.
 
 | Model             | Params (M) | BoolQ Acc. | SQuAD F1 | SAMSum R-L | SAMSum BS | ANLI Acc. | PAWS Acc. | XSum R-L | XSum BS | CommonGen R-L | CommonGen Cov. | CosmosQA Acc. |
 |------------------|------------|------------|----------|-------------|-----------|-----------|-----------|-----------|----------|----------------|------------------|----------------|
@@ -48,18 +72,16 @@ For now, we only focus on benchmarking with train dataset and comparing with tea
 | SmolLM-360M-KD    | 360        | **78.0**   | **56.6** | **38.6**    | **93.1**  | **36.9**  | 60.0      | **10.3**  | **79.0** | **33.6**        | **95.3**          | **33.0**       |
 
 
-We compared results using our evaluation benchmarks, which consists of the dev (validation) and test split of the 8 white datasets. We used 200 examples for XSum and CoQA and 500 for the rest. We used rank classification to compute accuracy on ANLI, BoolQ, PAWS and CosmosQA. Only a single template was used for evaluation since we wanted to avoid instructions that could turn a task from NLU to NLG. The FLAN-T5-XXL was the larger model evaluated for his experiments but because it was validated using the same hardware that was used for training, we used 4-bit quantization to fit its weights into memory but loose some accuracy in the process. For the ANLI and PAWS datasets, our KD outperforms its teacher, presumably because the teacher was in disadvantage as it was trained with different ground-truth labels. This highlight the need to train with larger or finetune teachers to achieve better performance.
+### Out-of-domain generalization
+Tasks never seen by the teacher (Python code and Eng–Spa translation) reveal:
+- ULD improves structural coherence and reasoning.
+- Students outperform vanilla FT despite no teacher familiarity.
 
-See the [evaluation notebook](https://colab.research.google.com/drive/1tfUkfX2p_CL7X7VqdHcrZxhlZErpMX3L) for more examples.
+## Generalization on Unseen Tasks
 
-## Generalization on unseen tasks
-
-For very few examples we actually saw some zero-shot behavior. 
+Students trained with ULD demonstrate early signs of **zero-shot and few-shot task adaptation**, even on tasks not included in training.
 
 <figure>
-<img src="./images/qualitative.png" width="600" />
+<img src="./images/qualitative.png" width="400" />
 <figcaption><i>Generalization on unseen tasks.</i></figcaption>
 </figure>
-
-We argue that the model was able to generate a dialogue even though it was never explicitly trained with such task. Also in the QA, the model didn't return a translation or another question, but in return it responded properly.
-
