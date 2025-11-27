@@ -11,7 +11,7 @@ Thus T5 logits can supervise any autoregressive model regardless of tokenizer si
 Our method demonstrated better performance compared with vanilla fine-tuning.
 
 <figure>
-<img src="./images/overview.png" width="400" />
+<img src="./images/overview.png" width="700" />
 <figcaption><i></i></figcaption>
 </figure>
 
@@ -22,7 +22,7 @@ Our method demonstrated better performance compared with vanilla fine-tuning.
 For the training data, we used a custom subset of the Muffin collection (i.e. [FLAN_v1](https://arxiv.org/abs/2109.01652) dataset) in addition to more datasets. In this multi-task setting, we carefully selected a task collection composed of 10 Natural Language Understanding and Natural Language Generation datasets.
 
 <figure>
-<img src="./images/tasks.png" width="400" />
+<img src="./images/tasks.png" width="600" />
 <figcaption><i>Tasks collection used to finetune/distill GPT-2.</i></figcaption>
 </figure>
 
@@ -39,7 +39,7 @@ For the training data, we used a custom subset of the Muffin collection (i.e. [F
 
 
 <figure>
-<img src="./images/losses.png" width="400" />
+<img src="./images/losses.png" width="600" />
 <figcaption><i></i></figcaption>
 </figure>
 
@@ -82,6 +82,6 @@ Tasks never seen by the teacher (Python code and Eng–Spa translation) reveal:
 Students trained with ULD demonstrate early signs of **zero-shot and few-shot task adaptation**, even on tasks not included in training.
 
 <figure>
-<img src="./images/qualitative.png" width="400" />
+<img src="./images/qualitative.png" width="600" />
 <figcaption><i>Generalization on unseen tasks.</i></figcaption>
 </figure>
